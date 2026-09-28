@@ -1,34 +1,34 @@
-# What you need to do to protect your account
-Since this library uses an unofficial API, your account may be banned if you use it incorrectly. Therefore, please be sure to follow the measures below.
+# アカウントを守るためにやるべきこと
+このライブラリは非公式 API を使用しているため、使い方を誤るとアカウントが凍結される可能性があります。必ず以下の対策を守ってください。
 
-## Avoid sending too many requests
-Sending too many requests may be perceived as suspicious behavior. Therefore, please avoid sending consecutive requests and allow time for a cooldown. Specifically, you should not send so many requests that you get stuck in a [rate limit](https://github.com/d60/twikit/blob/main/ratelimits.md).
+## リクエストを送りすぎない
+大量のリクエストを送ると、不審な挙動と見なされる可能性があります。連続してリクエストを送るのは避け、クールダウンの時間を取ってください。具体的には、[レート制限](ratelimits.md)に引っかかるほどの量のリクエストを送らないでください。直近のレスポンスの残りリクエスト数は `client.rate_limit_remaining` で確認できます。
 
-## Reuse login information
-As mentioned earlier, sending many requests can be perceived as suspicious behavior, especially logins, which are closely monitored. Therefore, the act of repeatedly calling the `login` method should be avoided. To do so, it is useful to reuse the login information contained in cookies by using the `save_cookies` and `load_cookies` methods. The specific methods are shown below:
+## ログイン情報（Cookie）を再利用する
+前述のとおり、大量のリクエストは不審な挙動と見なされます。特にログインは厳しく監視されています。パスワードによるログイン（`login` メソッド）は現在 X 側で廃止されているため、ブラウザでログインしたセッションの Cookie（`auth_token` と `ct0`）を使い、それを使い回してください。ブラウザで何度もログインし直すことも避けてください。具体的な方法は次のとおりです。
 
-The first time, there is a way to log in using the `login` method.
+最初にブラウザから取り出した Cookie をセットします。
 ```python
-client.login(
-    auth_info_1='...',
-    auth_info_2='...',
-    password='...'
-)
+client.set_cookies({
+    'auth_token': '...',
+    'ct0': '...'
+})
 ```
-Then save the cookies.
+その後、Cookie をファイルに保存します。
 ```python
 client.save_cookies('cookies.json')
 ```
-After the second time, load the saved cookies.
+2 回目以降は、保存した Cookie を読み込みます。
 ```python
 client.load_cookies('cookies.json')
 ```
+Cookie がまだ有効かどうかは `await client.is_logged_in()` で確認できます。
 
-## Do not send too many messages.
-Twitter seems to monitor messages carefully, so it is best to refrain from excessive messaging.
+## メッセージを送りすぎない
+Twitter はメッセージを注意深く監視しているようなので、過度なメッセージ送信は控えてください。
 
-## Don't tweet sensitive content.
-You should not tweet sensitive content, especially content related to sexuality, violence, politics, discrimination, or hate speech. This is because such content violates Twitter's terms and conditions and may be banned.
+## センシティブな内容をツイートしない
+センシティブな内容、特に性的な内容、暴力、政治、差別、ヘイトスピーチに関する内容はツイートしないでください。こうした内容は Twitter の利用規約に違反し、凍結される可能性があります。
 
 #
-**Please use Twikit safely in accordance with the above instructions!**
+**上記の指示に従って、Twikit を安全に使ってください！**
