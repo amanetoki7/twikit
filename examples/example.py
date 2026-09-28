@@ -4,47 +4,49 @@ from twikit import Client
 
 ###########################################
 
-# Enter your account information
-USERNAME = ...
-EMAIL = ...
-PASSWORD = ...
+# アカウント情報を入力してください。
+# パスワードによるログイン（client.login）は X 側で廃止されたため、
+# ブラウザでログインした状態の Cookie（auth_token と ct0）を使います。
+# 取得方法は README の「使い方」を参照してください。
+AUTH_TOKEN = ...
+CT0 = ...
 
-client = Client('en-US')
+client = Client('ja')
 
 async def main():
-    # Asynchronous client methods are coroutines and
-    # must be called using `await`.
-    await client.login(
-        auth_info_1=USERNAME,
-        auth_info_2=EMAIL,
-        password=PASSWORD
-    )
+    # 非同期クライアントのメソッドはコルーチンなので、
+    # `await` を付けて呼び出す必要があります。
+    client.set_cookies({'auth_token': AUTH_TOKEN, 'ct0': CT0})
+
+    # Cookie がまだ有効か確認する
+    if not await client.is_logged_in():
+        raise SystemExit('Cookie が無効です。ブラウザから取り直してください。')
 
     ###########################################
 
-    # Search Latest Tweets
+    # 最新のツイートを検索
     tweets = await client.search_tweet('query', 'Latest')
     for tweet in tweets:
         print(tweet)
-    # Search more tweets
+    # 続きのツイートを取得
     more_tweets = await tweets.next()
 
     ###########################################
 
-    # Search users
+    # ユーザーを検索
     users = await client.search_user('query')
     for user in users:
         print(user)
-    # Search more users
+    # 続きのユーザーを取得
     more_users = await users.next()
 
     ###########################################
 
-    # Get user by screen name
+    # スクリーンネームからユーザーを取得
     USER_SCREEN_NAME = 'example_user'
     user = await client.get_user_by_screen_name(USER_SCREEN_NAME)
 
-    # Access user attributes
+    # ユーザーの属性にアクセス
     print(
         f'id: {user.id}',
         f'name: {user.name}',
@@ -53,38 +55,38 @@ async def main():
         sep='\n'
     )
 
-    # Follow user
+    # フォロー
     await user.follow()
-    # Unfollow user
+    # フォロー解除
     await user.unfollow()
 
-    # Get user tweets
+    # ユーザーのツイートを取得
     user_tweets = await user.get_tweets('Tweets')
     for tweet in user_tweets:
         print(tweet)
-    # Get more tweets
+    # 続きのツイートを取得
     more_user_tweets = await user_tweets.next()
 
     ###########################################
 
-    # Send dm to a user
+    # ユーザーに DM を送る
     media_id = await client.upload_media('./image.png', 0)
     await user.send_dm('dm text', media_id)
 
-    # Get dm history
+    # DM の履歴を取得
     messages = await user.get_dm_history()
     for message in messages:
         print(message)
-    # Get more messages
+    # 続きのメッセージを取得
     more_messages = await messages.next()
 
     ###########################################
 
-    # Get tweet by ID
+    # ID からツイートを取得
     TWEET_ID = '0000000000'
     tweet = await client.get_tweet_by_id(TWEET_ID)
 
-    # Access tweet attributes
+    # ツイートの属性にアクセス
     print(
         f'id: {tweet.id}',
         f'text {tweet.text}',
@@ -93,21 +95,21 @@ async def main():
         sep='\n'
     )
 
-    # Favorite tweet
+    # いいね
     await tweet.favorite()
-    # Unfavorite tweet
+    # いいね解除
     await tweet.unfavorite()
-    # Retweet tweet
+    # リツイート
     await tweet.retweet()
-    # Delete retweet
+    # リツイート解除
     await tweet.delete_retweet()
 
-    # Reply to tweet
+    # ツイートに返信
     await tweet.reply('tweet content')
 
     ###########################################
 
-    # Create tweet with media
+    # メディア付きツイートを作成
     TWEET_TEXT = 'tweet text'
     MEDIA_IDS = [
         await client.upload_media('./media1.png', 0),
@@ -115,9 +117,9 @@ async def main():
         await client.upload_media('./media3.png', 2)
     ]
 
-    client.create_tweet(TWEET_TEXT, MEDIA_IDS)
+    await client.create_tweet(TWEET_TEXT, MEDIA_IDS)
 
-    # Create tweet with a poll
+    # 投票付きツイートを作成
     TWEET_TEXT = 'tweet text'
     POLL_URI = await client.create_poll(
         ['Option 1', 'Option 2', 'Option 3']
@@ -127,7 +129,7 @@ async def main():
 
     ###########################################
 
-    # Get news trends
+    # ニュースのトレンドを取得
     trends = await client.get_trends('news')
     for trend in trends:
         print(trend)

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING, Literal
 
-from ..utils import Result, timestamp_to_datetime
+from ..utils import Result, subobject, timestamp_to_datetime
 
 if TYPE_CHECKING:
     from .client import GuestClient
@@ -82,38 +82,71 @@ class User:
 
     def __init__(self, client: GuestClient, data: dict) -> None:
         self._client = client
-        legacy = data['legacy']
+        legacy = data.get('legacy', {})
+        core = subobject(data, 'core')
+        avatar = subobject(data, 'avatar')
+        location = subobject(data, 'location')
+        verification = subobject(data, 'verification')
+        privacy = subobject(data, 'privacy')
+        profile_bio = subobject(data, 'profile_bio')
 
-        self.id: str = data['rest_id']
-        self.created_at: str = legacy['created_at']
-        self.name: str = legacy['name']
-        self.screen_name: str = legacy['screen_name']
-        self.profile_image_url: str = legacy['profile_image_url_https']
-        self.profile_banner_url: str = legacy.get('profile_banner_url')
-        self.url: str = legacy.get('url')
-        self.location: str = legacy['location']
-        self.description: str = legacy['description']
-        self.description_urls: list = legacy['entities']['description']['urls']
-        self.urls: list = legacy['entities'].get('url', {}).get('urls')
-        self.pinned_tweet_ids: list[str] = legacy['pinned_tweet_ids_str']
-        self.is_blue_verified: bool = data['is_blue_verified']
-        self.verified: bool = legacy['verified']
-        self.possibly_sensitive: bool = legacy['possibly_sensitive']
-        self.default_profile: bool = legacy['default_profile']
-        self.default_profile_image: bool = legacy['default_profile_image']
-        self.has_custom_timelines: bool = legacy['has_custom_timelines']
-        self.followers_count: int = legacy['followers_count']
-        self.fast_followers_count: int = legacy['fast_followers_count']
-        self.normal_followers_count: int = legacy['normal_followers_count']
-        self.following_count: int = legacy['friends_count']
-        self.favourites_count: int = legacy['favourites_count']
-        self.listed_count: int = legacy['listed_count']
-        self.media_count = legacy['media_count']
-        self.statuses_count: int = legacy['statuses_count']
-        self.is_translator: bool = legacy['is_translator']
-        self.translator_type: str = legacy['translator_type']
-        self.withheld_in_countries: list[str] = legacy['withheld_in_countries']
-        self.protected: bool = legacy.get('protected', False)
+        self.id: str = data.get('rest_id', '')
+        self.created_at: str = core.get('created_at') or legacy.get('created_at', '')
+        self.name: str = core.get('name') or legacy.get('name', '')
+        self.screen_name: str = core.get('screen_name') or legacy.get('screen_name', '')
+        self.profile_image_url: str = avatar.get('image_url') or legacy.get('profile_image_url_https', '')
+        self.profile_banner_url: str = subobject(data, 'banner').get(
+            'image_url', legacy.get('profile_banner_url'))
+        self.url: str = subobject(data, 'website').get('url', legacy.get('url'))
+        self.location: str = location.get('location') or legacy.get('location', '')
+        self.description: str = profile_bio.get('description') or legacy.get('description', '')
+        self.description_urls: list = (
+            subobject(
+                subobject(subobject(data, 'profile_bio'), 'entities'),
+                'description'
+            ).get('urls')
+            or ((legacy.get('entities') or {}).get('description') or {})
+            .get('urls', [])
+        )
+        self.urls: list = (
+            subobject(subobject(subobject(data, 'profile_bio'), 'entities'), 'url')
+            .get('urls')
+            or (legacy.get('entities') or {}).get('url', {}).get('urls')
+        )
+        self.pinned_tweet_ids: list[str] = subobject(data, 'pinned_items').get(
+            'tweet_ids_str', legacy.get('pinned_tweet_ids_str', []))
+        self.is_blue_verified: bool = data.get('is_blue_verified', False)
+        self.verified: bool = verification.get('verified', legacy.get('verified', False))
+        # X sends the string 'None' rather than null when there is no label.
+        label = data.get('parody_commentary_fan_label')
+        self.parody_commentary_fan_label: str | None = (
+            None if label in (None, 'None') else label)
+        self.possibly_sensitive: bool = legacy.get('possibly_sensitive', False)
+        self.default_profile: bool = legacy.get('default_profile', False)
+        self.default_profile_image: bool = legacy.get('default_profile_image', False)
+        self.has_custom_timelines: bool = legacy.get('has_custom_timelines', False)
+        # X moved these into typed sub-objects; reading only `legacy` made
+        # every counter come back 0 on the guest path, silently.
+        relationship_counts = subobject(data, 'relationship_counts')
+        tweet_counts = subobject(data, 'tweet_counts')
+        action_counts = subobject(data, 'action_counts')
+        self.followers_count: int = relationship_counts.get(
+            'followers', legacy.get('followers_count', 0))
+        self.fast_followers_count: int = legacy.get('fast_followers_count', 0)
+        self.normal_followers_count: int = legacy.get('normal_followers_count', 0)
+        self.following_count: int = relationship_counts.get(
+            'following', legacy.get('friends_count', 0))
+        self.favourites_count: int = action_counts.get(
+            'favorites_count', legacy.get('favourites_count', 0))
+        self.listed_count: int = legacy.get('listed_count', 0)
+        self.media_count = tweet_counts.get(
+            'media_tweets', legacy.get('media_count', 0))
+        self.statuses_count: int = tweet_counts.get(
+            'tweets', legacy.get('statuses_count', 0))
+        self.is_translator: bool = legacy.get('is_translator', False)
+        self.translator_type: str = legacy.get('translator_type', '')
+        self.withheld_in_countries: list[str] = legacy.get('withheld_in_countries', [])
+        self.protected: bool = privacy.get('protected', legacy.get('protected', False))
 
     @property
     def created_at_datetime(self) -> datetime:

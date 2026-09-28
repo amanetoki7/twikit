@@ -1,16 +1,16 @@
 import asyncio
 from twikit import Client
 
-AUTH_INFO_1 = '...'
-AUTH_INFO_2 = '...'
-PASSWORD = '...'
-
-client = Client('en-US')
+client = Client('ja')
 
 
 async def main():
+    # 保存しておいた Cookie を読み込む（README の「使い方」を参照）
+    client.load_cookies('cookies.json')
+
     tweet = await client.get_tweet_by_id('...')
 
+    # 添付メディアを種類ごとにダウンロードする
     for i, media in enumerate(tweet.media):
         if media.type == 'photo':
             await media.download(f'media_{i}.jpg')

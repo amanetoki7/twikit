@@ -3,20 +3,17 @@ import time
 
 from twikit import Client
 
-AUTH_INFO_1 = '...'
-AUTH_INFO_2 = '...'
-PASSWORD = '...'
-
-client = Client('en-US')
+client = Client('ja')
 
 
 async def main():
     started_time = time.time()
 
+    # 保存しておいた Cookie を読み込む（README の「使い方」を参照）
     client.load_cookies('cookies.json')
     client_user = await client.user()
 
-    # Get all posts
+    # すべての投稿を取得
     all_tweets = []
     tweets = await client_user.get_tweets('Replies')
     all_tweets += tweets
@@ -33,8 +30,8 @@ async def main():
     await gather
 
     print(
-        f'Deleted {len(all_tweets)} tweets\n'
-        f'Time: {time.time() - started_time}'
+        f'{len(all_tweets)} 件のツイートを削除しました\n'
+        f'所要時間: {time.time() - started_time}'
     )
 
 asyncio.run(main())

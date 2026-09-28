@@ -37,17 +37,26 @@ class Endpoint:
     FOLLOWERS_LIST = f'https://api.{DOMAIN}/1.1/followers/list.json'
     FRIENDS_LIST = f'https://api.{DOMAIN}/1.1/friends/list.json'
     FOLLOWERS_IDS = f'https://api.{DOMAIN}/1.1/followers/ids.json'
+    UPDATE_PROFILE = f'https://api.{DOMAIN}/1.1/account/update_profile.json'
     FRIENDS_IDS = f'https://api.{DOMAIN}/1.1/friends/ids.json'
     DM_NEW = f'https://{DOMAIN}/i/api/1.1/dm/new2.json'
     DM_INBOX = f'https://{DOMAIN}/i/api/1.1/dm/inbox_initial_state.json'
+    DM_INBOX_TIMELINE = f'https://{DOMAIN}/i/api/1.1/dm/inbox_timeline/{{}}.json'
     DM_CONVERSATION = f'https://{DOMAIN}/i/api/1.1/dm/conversation/{{}}.json'
     CONVERSATION_UPDATE_NAME = f'https://{DOMAIN}/i/api/1.1/dm/conversation/{{}}/update_name.json'
+    DELETE_CONVERSATION = f'https://{DOMAIN}/i/api/1.1/dm/conversation/{{}}/delete.json'
     NOTIFICATIONS_ALL = f'https://{DOMAIN}/i/api/2/notifications/all.json'
     NOTIFICATIONS_VERIFIED = f'https://{DOMAIN}/i/api/2/notifications/verified.json'
     NOTIFICATIONS_MENTIONS = f'https://{DOMAIN}/i/api/2/notifications/mentions.json'
     LIVE_PIPELINE_EVENTS = f'https://api.{DOMAIN}/live_pipeline/events'
     LIVE_PIPELINE_UPDATE_SUBSCRIPTIONS = f'https://api.{DOMAIN}/1.1/live_pipeline/update_subscriptions'
     USER_STATE = f'https://api.{DOMAIN}/help-center/forms/api/prod/user_state.json'
+    # Space stream status (HLS/WebRTC source + chat token). `media_key` is
+    # the `{twitter_user_id}_{broadcast_id}` key from AudioSpaceById metadata.
+    LIVE_VIDEO_STREAM_STATUS = f'https://{DOMAIN}/i/api/1.1/live_video_stream/status/{{}}'
+    # Live chat as a line-delimited HTTP stream (used by the web client's
+    # live-chat sidebar; simpler than the chatman WebSocket).
+    LIVE_CHAT = f'https://{DOMAIN}/live-chat'
 
 
 class V11Client:
@@ -413,7 +422,9 @@ class V11Client:
         params = {'count': count}
         if user_id is not None:
             params['user_id'] = user_id
-        elif user_id is not None:
+        elif screen_name is not None:
+            # The second branch tested user_id as well, so it could never run
+            # and a screen-name-only call went out with no identifier at all.
             params['screen_name'] = screen_name
 
         if cursor is not None:
@@ -430,6 +441,47 @@ class V11Client:
 
     async def friends_ids(self, user_id, screen_name, count, cursor):
         return await self._friendship_ids(user_id, screen_name, count, Endpoint.FRIENDS_IDS, cursor)
+
+    async def update_profile(self, fields):
+        # x.com always sends displayNameMaxLength alongside the edited fields;
+        # without it the endpoint answers 200 and silently keeps the old
+        # profile, which looks like success but changes nothing.
+        data = {'displayNameMaxLength': 50}
+        data.update(fields)
+        # _base_headers pins content-type to application/json, which would
+        # mislabel this form body - X then parses no fields at all and answers
+        # 200 with the profile untouched.
+        headers = self.base._base_headers | {
+            'content-type': 'application/x-www-form-urlencoded'
+        }
+        return await self.base.post(
+            Endpoint.UPDATE_PROFILE,
+            data=data,
+            headers=headers
+        )
+
+    async def dm_new_group(self, recipient_ids, text, media_id):
+        data = {
+            'cards_platform': 'Web-12',
+            'dm_users': False,
+            'include_cards': 1,
+            'include_quote_count': True,
+            'recipient_ids': ','.join(recipient_ids),
+            'text': text
+        }
+        if media_id is not None:
+            data['media_id'] = media_id
+        return await self.base.post(
+            Endpoint.DM_NEW, json=data, headers=self.base._base_headers
+        )
+
+    async def delete_conversation(self, conversation_id):
+        return await self.base.post(
+            Endpoint.DELETE_CONVERSATION.format(conversation_id),
+            headers=self.base._base_headers | {
+                'content-type': 'application/x-www-form-urlencoded'
+            }
+        )
 
     async def dm_new(self, conversation_id, text, media_id, reply_to):
         data = {
@@ -449,6 +501,47 @@ class V11Client:
         return await self.base.post(
             Endpoint.DM_NEW,
             json=data,
+            headers=self.base._base_headers
+        )
+
+    async def dm_inbox(self, cursor):
+        params = {
+            'nsfw_filtering_enabled': False,
+            'filter_low_quality': False,
+            'include_quality': 'all',
+            'include_groups': True,
+            'include_inbox_timelines': True,
+            'include_ext_media_color': True,
+            'supports_reactions': True
+        }
+        if cursor is not None:
+            params['cursor'] = cursor
+        return await self.base.get(
+            Endpoint.DM_INBOX,
+            params=params,
+            headers=self.base._base_headers
+        )
+
+    async def dm_inbox_timeline(self, name, max_id, count=None):
+        # inbox_initial_state only ever serves the first page - handing it a
+        # cursor returns the identical conversations. This is the endpoint
+        # that actually walks the inbox, and it refuses without a max_id
+        # (400, code 214).
+        params = {
+            'nsfw_filtering_enabled': False,
+            'filter_low_quality': False,
+            'include_quality': 'all',
+            'include_groups': True,
+            'include_inbox_timelines': True,
+            'include_ext_media_color': True,
+            'supports_reactions': True,
+            'max_id': max_id
+        }
+        if count is not None:
+            params['count'] = count
+        return await self.base.get(
+            Endpoint.DM_INBOX_TIMELINE.format(name),
+            params=params,
             headers=self.base._base_headers
         )
 
@@ -505,8 +598,41 @@ class V11Client:
             Endpoint.LIVE_PIPELINE_UPDATE_SUBSCRIPTIONS, data=data, headers=headers
         )
 
-    async def user_state(self):
+    async def live_video_stream_status(self, media_key):
+        params = {
+            'client': 'web',
+            'use_syndication_guest_id': 'false',
+            'cookie_set_host': 'x.com',
+        }
+        return await self.base.get(
+            Endpoint.LIVE_VIDEO_STREAM_STATUS.format(media_key),
+            params=params,
+            headers=self.base._base_headers
+        )
+
+    async def live_chat(self, broadcast_id, session_id=None, cursor=None):
+        """Open the live-chat HTTP stream for a Space. Returns the raw
+        response; iterate its lines as JSON."""
+        params = {
+            'broadcastId': broadcast_id,
+            'sessionId': session_id or '',
+        }
+        if cursor is not None:
+            params['cursor'] = cursor
+        return await self.base.get(
+            Endpoint.LIVE_CHAT,
+            params=params,
+            headers=self.base._base_headers,
+        )
+
+    async def user_state(self, **kwargs):
+        # `**kwargs` is forwarded to `base.get` → `base.request`. The 429
+        # recovery path in `Client.request` calls `_get_user_state()`, which
+        # ends up back here; we need to pass `check_user_state=False` down
+        # so that if this nested call also returns 429 we don't retry the
+        # recovery check and loop.
         return await self.base.get(
             Endpoint.USER_STATE,
-            headers=self.base._base_headers
+            headers=self.base._base_headers,
+            **kwargs
         )

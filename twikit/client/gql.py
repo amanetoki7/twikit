@@ -4,18 +4,23 @@ from typing import TYPE_CHECKING
 
 from ..constants import (
     DOMAIN,
+    AUDIO_SPACE_FEATURES,
     BOOKMARK_FOLDER_TIMELINE_FEATURES,
     COMMUNITY_NOTE_FEATURES,
     COMMUNITY_TWEETS_FEATURES,
     FEATURES,
     JOIN_COMMUNITY_FEATURES,
+    CREATE_LIST_FEATURES,
     LIST_FEATURES,
     NOTE_TWEET_FEATURES,
+    SEARCH_TIMELINE_FEATURES,
     SIMILAR_POSTS_FEATURES,
     TWEET_RESULT_BY_REST_ID_FEATURES,
     TWEET_RESULTS_BY_REST_IDS_FEATURES,
     USER_FEATURES,
-    USER_HIGHLIGHTS_TWEETS_FEATURES
+    USER_HIGHLIGHTS_TWEETS_FEATURES,
+    EXPLORE_PAGE_FEATURES,
+    GENERIC_TIMELINE_FEATURES
 )
 from ..utils import flatten_params, get_query_id
 
@@ -31,66 +36,85 @@ class Endpoint:
     def url(path):
         return f'https://{DOMAIN}/i/api/graphql/{path}'
 
-    SEARCH_TIMELINE = url('flaR-PUMshxFWZWPNpq4zA/SearchTimeline')
-    SIMILAR_POSTS = url('EToazR74i0rJyZYalfVEAQ/SimilarPosts')
-    CREATE_NOTE_TWEET = url('iCUB42lIfXf9qPKctjE5rQ/CreateNoteTweet')
-    CREATE_TWEET = url('SiM_cAu83R0wnrpmKQQSEw/CreateTweet')
+    SEARCH_TIMELINE = url('BGd0T_j7oVwlW5U79tO_0A/SearchTimeline')
+    SIMILAR_POSTS = url('6GbCDHT7fkPjgdkueQ9RKA/SimilarPosts')
+    CREATE_NOTE_TWEET = url('WCcsCWTsiPteFwUxjI6OmA/CreateNoteTweet')
+    CREATE_TWEET = url('wUgPBh9hEKhMMGlg8uDuFw/CreateTweet')
     CREATE_SCHEDULED_TWEET = url('LCVzRQGxOaGnOnYH01NQXg/CreateScheduledTweet')
-    DELETE_TWEET = url('VaenaVgh5q5ih7kvyVjgtg/DeleteTweet')
+    DELETE_TWEET = url('nxpZCY2K-I6QoFHAHeojFQ/DeleteTweet')
+    # Deliberately NOT the current document. The one the web client uses
+    # (Gb-d6r0vxPOADdG62OEBpQ) returns `legacy` empty, and nine fields live
+    # only there - listed_count, normal_followers_count, has_custom_timelines,
+    # want_retweets, fast_followers_count, default_profile,
+    # default_profile_image, is_translator, withheld_in_countries - with no
+    # equivalent among the typed objects. This one still answers with legacy
+    # populated and covers every field the typed objects carry, so nothing is
+    # lost by using it. The one thing it omits, parody_commentary_fan_label,
+    # still arrives on users embedded in tweets and search results, which use
+    # their own documents.
     USER_BY_SCREEN_NAME = url('NimuplG1OB7Fd2btCLdBOw/UserByScreenName')
+    MUTED_ACCOUNTS = url('dQiMIEnwsQjKtv-7PHMixQ/MutedAccounts')
+    BLOCKED_ACCOUNTS = url('5oNXfRkE7HVkDX1Fd1gn3g/BlockedAccountsAll')
+    COMBINED_LISTS = url('15lgkbq4YMpgnv3Xf8BlXg/CombinedLists')
+    PROFILE_SPOTLIGHTS = url('mzoqrVGwk-YTSGME1dRfXQ/ProfileSpotlightsQuery')
+    ABOUT_ACCOUNT = url('TzOG2twZEfhr9KmClvVVqA/AboutAccountQuery')
+    # Same reasoning as USER_BY_SCREEN_NAME above.
     USER_BY_REST_ID = url('tD8zKvQzwY3kdx5yz6YmOw/UserByRestId')
-    TWEET_DETAIL = url('U0HTv-bAWTBYylwEMT7x5A/TweetDetail')
-    TWEET_RESULT_BY_REST_ID = url('Xl5pC_lBk_gcO2ItU39DQw/TweetResultByRestId')
-    FETCH_SCHEDULED_TWEETS = url('ITtjAzvlZni2wWXwf295Qg/FetchScheduledTweets')
+    TWEET_DETAIL = url('559hs_YZNV4IgA3Z6zIIuw/TweetDetail')
+    TWEET_RESULT_BY_REST_ID = url('LkId5Akr61BS6BmOIcffRg/TweetResultByRestId')
+    FETCH_SCHEDULED_TWEETS = url('H2elmT2R9DLhWoo0DZFNkA/FetchScheduledTweets')
     DELETE_SCHEDULED_TWEET = url('CTOVqej0JBXAZSwkp1US0g/DeleteScheduledTweet')
-    RETWEETERS = url('X-XEqG5qHQSAwmvy00xfyQ/Retweeters')
-    FAVORITERS = url('LLkw5EcVutJL6y-2gkz22A/Favoriters')
+    RETWEETERS = url('_wJOTLm5HMqNdcr1nGWlyA/Retweeters')
+    FAVORITERS = url('JpUz3qfNTiMbhqmJOvVJSw/Favoriters')
     FETCH_COMMUNITY_NOTE = url('fKWPPj271aTM-AB9Xp48IA/BirdwatchFetchOneNote')
-    USER_TWEETS = url('QWF3SzpHmykQHsQMixG0cg/UserTweets')
-    USER_TWEETS_AND_REPLIES = url('vMkJyzx1wdmvOeeNG0n6Wg/UserTweetsAndReplies')
-    USER_MEDIA = url('2tLOJWwGuCTytDrGBg8VwQ/UserMedia')
-    USER_LIKES = url('IohM3gxQHfvWePH5E3KuNA/Likes')
-    USER_HIGHLIGHTS_TWEETS = url('tHFm_XZc_NNi-CfUThwbNw/UserHighlightsTweets')
+    USER_TWEETS = url('eoJ5zbv51Z_KVl81v9PmLQ/UserTweets')
+    USER_TWEETS_AND_REPLIES = url('wc5DRl4VaW5lSqJ8YbftZQ/UserTweetsAndReplies')
+    USER_MEDIA = url('2DC9TKrcUzwGC_QskSVl5w/UserMedia')
+    USER_LIKES = url('BEthBswU1Bt209H5xptp4Q/Likes')
+    USER_HIGHLIGHTS_TWEETS = url('Ijy4LdX8ZYTy1PzQn8xC4g/UserHighlightsTweets')
     HOME_TIMELINE = url('-X_hcgQzmHGl29-UXxz4sw/HomeTimeline')
     HOME_LATEST_TIMELINE = url('U0cdisy7QFIoTfu3-Okw0A/HomeLatestTimeline')
     FAVORITE_TWEET = url('lI07N6Otwv1PhnEgXILM7A/FavoriteTweet')
     UNFAVORITE_TWEET = url('ZYKSe-w7KEslx3JhSIk5LA/UnfavoriteTweet')
-    CREATE_RETWEET = url('ojPdsZsimiJrUGLR1sjUtA/CreateRetweet')
-    DELETE_RETWEET = url('iQtK4dl5hBmXewYZuEOKVw/DeleteRetweet')
+    CREATE_RETWEET = url('mbRO74GrOvSfRcJnlMapnQ/CreateRetweet')
+    DELETE_RETWEET = url('ZyZigVsNiFO6v1dEks1eWg/DeleteRetweet')
     CREATE_BOOKMARK = url('aoDbu3RHznuiSkQ9aNM67Q/CreateBookmark')
     BOOKMARK_TO_FOLDER = url('4KHZvvNbHNf07bsgnL9gWA/bookmarkTweetToFolder')
     DELETE_BOOKMARK = url('Wlmlj2-xzyS1GN3a6cj-mQ/DeleteBookmark')
-    BOOKMARKS = url('qToeLeMs43Q8cr7tRYXmaQ/Bookmarks')
-    BOOKMARK_FOLDER_TIMELINE = url('8HoabOvl7jl9IC1Aixj-vg/BookmarkFolderTimeline')
+    BOOKMARKS = url('aqjes8lRHRFG0HUglVTfNg/Bookmarks')
+    BOOKMARK_FOLDER_TIMELINE = url('g5l-N4fpbp7B-1OAbOdGzw/BookmarkFolderTimeline')
     BOOKMARKS_ALL_DELETE = url('skiACZKC1GDYli-M8RzEPQ/BookmarksAllDelete')
     BOOKMARK_FOLDERS_SLICE = url('i78YDd0Tza-dV4SYs58kRg/BookmarkFoldersSlice')
     EDIT_BOOKMARK_FOLDER = url('a6kPp1cS1Dgbsjhapz1PNw/EditBookmarkFolder')
     DELETE_BOOKMARK_FOLDER = url('2UTTsO-6zs93XqlEUZPsSg/DeleteBookmarkFolder')
     CREATE_BOOKMARK_FOLDER = url('6Xxqpq8TM_CREYiuof_h5w/createBookmarkFolder')
-    FOLLOWERS = url('gC_lyAxZOptAMLCJX5UhWw/Followers')
-    BLUE_VERIFIED_FOLLOWERS = url('VmIlPJNEDVQ29HfzIhV4mw/BlueVerifiedFollowers')
-    FOLLOWERS_YOU_KNOW = url('f2tbuGNjfOE8mNUO5itMew/FollowersYouKnow')
-    FOLLOWING = url('2vUj-_Ek-UmBVDNtd8OnQA/Following')
-    USER_CREATOR_SUBSCRIPTIONS = url('Wsm5ZTCYtg2eH7mXAXPIgw/UserCreatorSubscriptions')
+    FOLLOWERS = url('vJijlO_CM7dyGFNjDd7iqQ/Followers')
+    EXPLORE_PAGE = url('gjznU4bIOCEjvXD5Un47bw/ExplorePage')
+    GENERIC_TIMELINE_BY_ID = url('BrGScxnisMdTXyeLScaEhQ/GenericTimelineById')
+    BLUE_VERIFIED_FOLLOWERS = url('cg6WLW39UujWMeX77xBnOA/BlueVerifiedFollowers')
+    FOLLOWERS_YOU_KNOW = url('wIEyYIhzwtDEgBvqDRCDVQ/FollowersYouKnow')
+    FOLLOWING = url('b8XpwALENnJdFSHchkK6rw/Following')
+    USER_CREATOR_SUBSCRIPTIONS = url('n5c96Ql2BupZFGeEOIp9cA/UserCreatorSubscriptions')
     USER_DM_REACTION_MUTATION_ADD_MUTATION = url('VyDyV9pC2oZEj6g52hgnhA/useDMReactionMutationAddMutation')
     USER_DM_REACTION_MUTATION_REMOVE_MUTATION = url('bV_Nim3RYHsaJwMkTXJ6ew/useDMReactionMutationRemoveMutation')
     DM_MESSAGE_DELETE_MUTATION = url('BJ6DtxA2llfjnRoRjaiIiw/DMMessageDeleteMutation')
     ADD_PARTICIPANTS_MUTATION = url('oBwyQ0_xVbAQ8FAyG0pCRA/AddParticipantsMutation')
-    CREATE_LIST = url('EYg7JZU3A1eJ-wr2eygPHQ/CreateList')
-    EDIT_LIST_BANNER = url('t_DsROHldculsB0B9BUAWw/EditListBanner')
-    DELETE_LIST_BANNER = url('Y90WuxdWugtMRJhkXTdvzg/DeleteListBanner')
-    UPDATE_LIST = url('dIEI1sbSAuZlxhE0ggrezA/UpdateList')
-    LIST_ADD_MEMBER = url('lLNsL7mW6gSEQG6rXP7TNw/ListAddMember')
-    LIST_REMOVE_MEMBER = url('cvDFkG5WjcXV0Qw5nfe1qQ/ListRemoveMember')
-    LIST_MANAGEMENT_PACE_TIMELINE = url('47170qwZCt5aFo9cBwFoNA/ListsManagementPageTimeline')
-    LIST_BY_REST_ID = url('9hbYpeVBMq8-yB8slayGWQ/ListByRestId')
-    LIST_LATEST_TWEETS_TIMELINE = url('HjsWc-nwwHKYwHenbHm-tw/ListLatestTweetsTimeline')
-    LIST_MEMBERS = url('BQp2IEYkgxuSxqbTAr1e1g/ListMembers')
-    LIST_SUBSCRIBERS = url('74wGEkaBxrdoXakWTWMxRQ/ListSubscribers')
+    CREATE_LIST = url('sTuzqjTr8MNpVBb9YF04Mg/CreateList')
+    DELETE_LIST = url('UnN9Th1BDbeLjpgjGSpL3Q/DeleteList')
+    EDIT_LIST_BANNER = url('E_ugomI2WMK7mJCTjRQjFQ/EditListBanner')
+    DELETE_LIST_BANNER = url('3ZIyjR4JXXJ69HdoxlHcVw/DeleteListBanner')
+    UPDATE_LIST = url('dGqf-DouTmK767LtRJ2qeA/UpdateList')
+    LIST_ADD_MEMBER = url('V2yIKI9d6o_9D9rJ9-a-2w/ListAddMember')
+    LIST_REMOVE_MEMBER = url('NYsw9xBA6rSMA3N5sccSJA/ListRemoveMember')
+    LIST_MANAGEMENT_PACE_TIMELINE = url('4zAcuxtfEt0_ds2pU17Liw/ListsManagementPageTimeline')
+    LIST_BY_REST_ID = url('niz0TtOxL2zIcbq6_NQiNw/ListByRestId')
+    LIST_LATEST_TWEETS_TIMELINE = url('jW040BLUjh8X6Tw2ODQufA/ListLatestTweetsTimeline')
+    LIST_MEMBERS = url('wGce-45xnc5bs3HVvevC2w/ListMembers')
+    LIST_SUBSCRIBERS = url('D4pxLunZzmExmyOfDK4xaA/ListSubscribers')
     SEARCH_COMMUNITY = url('daVUkhfHn7-Z8llpYVKJSw/CommunitiesSearchQuery')
-    COMMUNITY_QUERY = url('lUBKrilodgg9Nikaw3cIiA/CommunityQuery')
+    COMMUNITY_QUERY = url('-ElI1vg3dYbttVMhBhGdLw/CommunityQuery')
     COMMUNITY_MEDIA_TIMELINE = url('Ht5K2ckaZYAOuRFmFfbHig/CommunityMediaTimeline')
-    COMMUNITY_TWEETS_TIMELINE = url('mhwSsmub4JZgHcs0dtsjrw/CommunityTweetsTimeline')
+    COMMUNITY_TWEETS_TIMELINE = url('dD1uF9vQx0OX-e1rKA4YLw/CommunityTweetsTimeline')
     COMMUNITIES_MAIN_PAGE_TIMELINE = url('4-4iuIdaLPpmxKnA3mr2LA/CommunitiesMainPageTimeline')
     JOIN_COMMUNITY = url('xZQLbDwbI585YTG0QIpokw/JoinCommunity')
     LEAVE_COMMUNITY = url('OoS6Kd4-noNLXPZYHtygeA/LeaveCommunity')
@@ -98,7 +122,20 @@ class Endpoint:
     MEMBERS_SLICE_TIMELINE_QUERY = url('KDAssJ5lafCy-asH4wm1dw/membersSliceTimeline_Query')
     MODERATORS_SLICE_TIMELINE_QUERY = url('9KI_r8e-tgp3--N5SZYVjg/moderatorsSliceTimeline_Query')
     COMMUNITY_TWEET_SEARCH_MODULE_QUERY = url('5341rmzzvdjqfmPKfoHUBw/CommunityTweetSearchModuleQuery')
-    TWEET_RESULTS_BY_REST_IDS = url('PTN9HhBAlpoCTHfspDgqLA/TweetResultsByRestIds')
+    TWEET_RESULTS_BY_REST_IDS = url('Tbh_EBpWw_VUFu5tMYAuNQ/TweetResultsByRestIds')
+
+    # --- Spaces ---
+    # Query IDs below were extracted from the current web bundle
+    # (main.*.js + shared AudioSpace* chunks, verified 2026-08).
+    AUDIO_SPACE_BY_ID = url('CSzFYPoVPLfqWFAJDsYZxQ/AudioSpaceById')
+    AUDIO_SPACE_SEARCH = url('NTq79TuSz6fHj8lQaferJw/AudioSpaceSearch')
+    BROWSE_SPACE_TOPICS = url('TYpVV9QioZfViHqEqRZxJA/BrowseSpaceTopics')
+    AUDIO_SPACE_ADD_SHARING = url('G0NcfBzL8WWWg7KYRzVjUg/AudioSpaceAddSharing')
+    AUDIO_SPACE_DELETE_SHARING = url('YMbfLMTUUEzEEMibvvR26Q/AudioSpaceDeleteSharing')
+    SUBSCRIBE_TO_SCHEDULED_SPACE = url('Sxn4YOlaAwEKjnjWV0h7Mw/SubscribeToScheduledSpace')
+    UNSUBSCRIBE_FROM_SCHEDULED_SPACE = url('Zevhh76Msw574ZSs2NQHGQ/UnsubscribeFromScheduledSpace')
+    # Returns the JWT that authenticates against the Periscope (proxsee) API.
+    AUTHENTICATE_PERISCOPE = url('r7VUmxbfqNkx7uwjgONSNw/AuthenticatePeriscope')
 
 
 class GQLClient:
@@ -152,11 +189,14 @@ class GQLClient:
             'rawQuery': query,
             'count': count,
             'querySource': 'typed_query',
-            'product': product
+            'product': product,
+            'withGrokTranslatedBio': True
         }
         if cursor is not None:
             variables['cursor'] = cursor
-        return await self.gql_get(Endpoint.SEARCH_TIMELINE, variables, FEATURES)
+        return await self.gql_get(
+            Endpoint.SEARCH_TIMELINE, variables, SEARCH_TIMELINE_FEATURES
+        )
 
     async def similar_posts(self, tweet_id: str):
         variables = {'tweet_id': tweet_id}
@@ -252,6 +292,34 @@ class GQLClient:
         }
         return await self.gql_get(Endpoint.USER_BY_SCREEN_NAME, variables, USER_FEATURES, extra_params=params)
 
+    async def muted_accounts(self, count, cursor):
+        variables = {'count': count, 'includePromotedContent': False}
+        if cursor is not None:
+            variables['cursor'] = cursor
+        return await self.gql_get(Endpoint.MUTED_ACCOUNTS, variables, FEATURES)
+
+    async def blocked_accounts(self, count, cursor):
+        variables = {'count': count, 'includePromotedContent': False}
+        if cursor is not None:
+            variables['cursor'] = cursor
+        return await self.gql_get(Endpoint.BLOCKED_ACCOUNTS, variables, FEATURES)
+
+    async def combined_lists(self, user_id, count, cursor):
+        variables = {'userId': user_id, 'count': count}
+        if cursor is not None:
+            variables['cursor'] = cursor
+        return await self.gql_get(Endpoint.COMBINED_LISTS, variables, FEATURES)
+
+    async def profile_spotlights(self, screen_name):
+        return await self.gql_get(
+            Endpoint.PROFILE_SPOTLIGHTS, {'screen_name': screen_name}
+        )
+
+    async def about_account(self, screen_name):
+        return await self.gql_get(
+            Endpoint.ABOUT_ACCOUNT, {'screenName': screen_name}
+        )
+
     async def user_by_rest_id(self, user_id):
         variables = {
             'userId': user_id,
@@ -300,6 +368,19 @@ class GQLClient:
 
     async def favoriters(self, tweet_id, count, cursor):
         return await self.tweet_engagements(tweet_id, count, cursor, Endpoint.FAVORITERS)
+
+    async def explore_page(self):
+        variables = {'cursor': ''}
+        return await self.gql_get(Endpoint.EXPLORE_PAGE, variables, EXPLORE_PAGE_FEATURES)
+
+    async def generic_timeline_by_id(self, timeline_id, count, extra_params=None):
+        variables = {
+            'timelineId': timeline_id,
+            'count': count
+        }
+        if extra_params:
+            variables |= extra_params
+        return await self.gql_get(Endpoint.GENERIC_TIMELINE_BY_ID, variables, GENERIC_TIMELINE_FEATURES)
 
     async def bird_watch_one_note(self, note_id):
         variables = {'note_id': note_id}
@@ -441,7 +522,6 @@ class GQLClient:
         variables = {}
         if cursor is not None:
             variables['cursor'] = cursor
-        variables = {'variables': variables}
         return await self.gql_get(Endpoint.BOOKMARK_FOLDERS_SLICE, variables)
 
     async def edit_bookmark_folder(self, folder_id, name):
@@ -519,7 +599,15 @@ class GQLClient:
             'name': name,
             'description': description
         }
-        return await self.gql_post(Endpoint.CREATE_LIST, variables, LIST_FEATURES)
+        return await self.gql_post(
+            Endpoint.CREATE_LIST, variables, CREATE_LIST_FEATURES
+        )
+
+    async def delete_list(self, list_id):
+        variables = {'listId': list_id}
+        return await self.gql_post(
+            Endpoint.DELETE_LIST, variables, CREATE_LIST_FEATURES
+        )
 
     async def edit_list_banner(self, list_id, media_id):
         variables = {
@@ -681,6 +769,73 @@ class GQLClient:
             'withCommunity': True
         }
         return await self.gql_get(Endpoint.TWEET_RESULTS_BY_REST_IDS, variables, TWEET_RESULTS_BY_REST_IDS_FEATURES)
+
+    ####################
+    # Spaces
+    ####################
+
+    async def audio_space_by_id(self, space_id, with_replays=True, with_listeners=True):
+        variables = {
+            'id': space_id,
+            'isMetatagsQuery': False,
+            'withReplays': with_replays,
+            'withListeners': with_listeners,
+            'withSuperFollowsUserFields': True,
+            'withSuperFollowsTweetFields': True,
+            'withBirdwatchPivots': False,
+            'withDownvotePerspective': False,
+            'withReactionsMetadata': False,
+            'withReactionsPerspective': False,
+            'withScheduledSpaces': True
+        }
+        return await self.gql_get(
+            Endpoint.AUDIO_SPACE_BY_ID, variables, AUDIO_SPACE_FEATURES
+        )
+
+    async def audio_space_search(self, query, filter='Live'):
+        # The web client executes this operation as a POST even though it is
+        # declared `query`; GET returns 404.
+        variables = {
+            'filter': filter,
+            'query': query
+        }
+        return await self.gql_post(Endpoint.AUDIO_SPACE_SEARCH, variables)
+
+    async def browse_space_topics(self):
+        return await self.gql_get(Endpoint.BROWSE_SPACE_TOPICS, {})
+
+    async def audio_space_add_sharing(self, space_id, tweet_id):
+        variables = {
+            'audio_space_id': space_id,
+            'sharing': {'shared_tweet': {'tweet_id': tweet_id}},
+        }
+        return await self.gql_post(
+            Endpoint.AUDIO_SPACE_ADD_SHARING, variables
+        )
+
+    async def audio_space_delete_sharing(self, space_id, sharing_id):
+        variables = {
+            'audio_space_id': space_id,
+            'sharing_id': sharing_id,
+        }
+        return await self.gql_post(
+            Endpoint.AUDIO_SPACE_DELETE_SHARING, variables
+        )
+
+    async def subscribe_to_scheduled_space(self, space_id):
+        variables = {'id': space_id}
+        return await self.gql_post(
+            Endpoint.SUBSCRIBE_TO_SCHEDULED_SPACE, variables
+        )
+
+    async def unsubscribe_from_scheduled_space(self, space_id):
+        variables = {'id': space_id}
+        return await self.gql_post(
+            Endpoint.UNSUBSCRIBE_FROM_SCHEDULED_SPACE, variables
+        )
+
+    async def authenticate_periscope(self):
+        return await self.gql_get(Endpoint.AUTHENTICATE_PERISCOPE, {})
 
     ####################
     # For guest client

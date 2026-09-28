@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import warnings
+
+from .errors import NotFound
+
 from typing import TYPE_CHECKING
 
 import m3u8
@@ -24,6 +28,8 @@ class Media:
         The expanded display URL.
     media_url : :class:`str`
         The media URL.
+    source_url : :class:`str`
+        The original (full-resolution) media URL.
     source_status_id : :class:`str`
         The source tweet ID.
     source_user_id : :class:`str`
@@ -60,6 +66,15 @@ class Media:
     @property
     def media_url(self) -> str:
         return self._data.get('media_url_https')
+
+    @property
+    def source_url(self) -> str:
+        """The original (full-resolution) media URL."""
+        url = self._data.get('media_url_https')
+        if not url:
+            return url
+        sep = '&' if '?' in url else '?'
+        return f'{url}{sep}name=orig'
 
     @property
     def source_status_id(self) -> str:
@@ -99,7 +114,12 @@ class Media:
         return self.original_info.get('focus_rects')
 
     async def get(self) -> bytes:
-        response = await self._client.http.get(self.media_url)
+        response = await self._client._send('GET', self.media_url, follow_redirects=True)
+        if response.status_code >= 400:
+            # Writing the error page to disk as a .jpg looked like success.
+            raise NotFound(
+                f'Media unavailable ({response.status_code}) at {self.media_url}'
+            )
         return response.content
 
     async def download(self, output_path: str) -> None:
@@ -151,7 +171,9 @@ class Stream:
 
     @property
     def content_type(self) -> str:
-        return self._data.get('content-type')
+        # X spells this content_type in video_info variants; the hyphenated
+        # form never matched, so this always returned None.
+        return self._data.get('content_type') or self._data.get('content-type')
 
     async def get(self) -> bytes:
         """
@@ -162,7 +184,11 @@ class Stream:
         :class:`bytes`
             The raw content of the stream.
         """
-        response = await self._client.http.get(self.url)
+        response = await self._client._send('GET', self.url, follow_redirects=True)
+        if response.status_code >= 400:
+            raise NotFound(
+                f'Stream unavailable ({response.status_code}) at {self.url}'
+            )
         return response.content
 
     async def download(self, output_path: str) -> None:
@@ -273,7 +299,9 @@ class Video(Media):
             None
         )
         if not m3u8_stream:
-            raise None
+            # `raise None` is a TypeError, not "no subtitles" - and the
+            # caller already checks for a falsy playlist.
+            return None
         response, _ = await self._client.get(m3u8_stream['url'])
         playlist = m3u8.loads(response)
         self._playlist = playlist
@@ -341,6 +369,6 @@ def _media_from_data(client, data) -> Media:
     type = data['type']
     cls = MEDIA_TYPE_MAPPING.get(type)
     if not cls:
-        print('unknown media type')
+        warnings.warn(f'Unknown media type: {data.get("type")!r}')
         return
     return cls(client, data)
