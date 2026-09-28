@@ -1,8 +1,20 @@
-# Rate Limits
+# レート制限
 
-**The rate limits reset every 15 minutes.**
+**レート制限は 15 分ごとにリセットされます。**
 
-| Functions                             | Limit | Endpoint                            |
+\* `create_tweet` には、15 分枠とは別の、より厳しい制限があります。無料アカウントでは **1 日あたり約 50 投稿** が上限です。これに達すると、次のメッセージとともに `CouldNotTweet` が送出されます。
+
+```
+Authorization: You've hit the daily limit. Subscribe to Premium for higher limits. (501)
+```
+
+このとき 15 分枠のカウンターはまだ約 250 リクエスト残っていると報告するため、レート制限ヘッダーを見張るだけでは事前に気付けません。新規アカウント 4 つで計測したところ、いずれも毎分約 70 投稿のペースで **51 投稿目** で止められました。読み取り・いいね・フォローは引き続き動作し、投稿だけが翌日まで（または Premium に加入するまで）ブロックされます。
+
+直近のレスポンスに含まれる残りリクエスト数とリセット時刻は、`Client.rate_limit_remaining` と `Client.rate_limit_reset` で確認できます。
+
+「上限」の `-` は未計測（不明）を表します。
+
+| 関数                                  | 上限  | エンドポイント                      |
 |---------------------------------------|-------|-------------------------------------|
 | add_members_to_group                  | -     | AddParticipantsMutation             |
 | block_user                            | 187   | blocks/create.json                  |
@@ -17,7 +29,7 @@
 | create_list                           | -     | CreateList                          |
 | retweet                               | -     | CreateRetweet                       |
 | create_scheduled_tweet                | -     | CreateScheduledTweet                |
-| create_tweet                          | -     | CreateTweet                         |
+| create_tweet                          | 300*  | CreateTweet                         |
 | delete_bookmark                       | -     | DeleteBookmark                      |
 | delete_dm                             | -     | DMMessageDeleteMutation             |
 | delete_list_banner                    | -     | DeleteListBanner                    |
@@ -72,3 +84,13 @@
 | get_user_tweets[tweet_type="Tweets"]  | 50    | UserTweets                          |
 | get_user_tweets[tweet_type="Replies"] | 50    | UserTweetsAndReplies                |
 | vote                                  | -     | capi/passthrough/1                  |
+| create_group                          | -     | dm/new2.json                        |
+| delete_dm_conversation                | -     | dm/conversation/{id}/delete.json    |
+| delete_list                           | -     | DeleteList                          |
+| get_about_account                     | -     | AboutAccountQuery                   |
+| get_blocked_users                     | -     | BlockedAccountsAll                  |
+| get_dm_inbox                          | -     | dm/inbox_initial_state.json         |
+| get_muted_users                       | -     | MutedAccounts                       |
+| get_user_lists                        | -     | CombinedLists                       |
+| get_user_spotlights                   | -     | ProfileSpotlightsQuery              |
+| update_profile                        | -     | account/update_profile.json         |
