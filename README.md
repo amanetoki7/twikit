@@ -209,14 +209,15 @@ await client.get_trends('trending')                 # トレンド
 
 不具合を見つけたとき、修正があるときは、[Issues](https://github.com/amanetoki7/twikit/issues) に Issue や Pull Request をお願いします。
 
-役に立ったら、⭐ を付けてもらえると励みになります。
+役に立ったら、すたー を付けてもらえると励みになります。
 
 ## クレジット
 
 - **[d60/twikit](https://github.com/d60/twikit)**（[@d60](https://github.com/d60)）— 元になる実装。功績はすべて原作者に帰属します。
 - **[PawiX25/twifork](https://github.com/PawiX25/twifork)**（[@PawiX25](https://github.com/PawiX25) とコントリビューターの皆さん）— 2026 年時点の不具合修正と X スペース対応。このリポジトリはその成果を取り込んでいます。
+- すきくん **[八雲ゆかり](https://x.com/yukari_557fd8) さま** ([@yukari-557fd8](https://github.com/yukari-557fd8)) - 公式APIしか使ったことないわたしを救ってくれた。このリポジトリがうまれるきっかけにもなりました。
 
-いずれも **MIT ライセンス**で公開されています。
+GitHubリポジトリは、いずれも **MIT ライセンス**で公開されています。
 
 ## 免責事項
 
