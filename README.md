@@ -15,6 +15,8 @@
   [日本語] · [<a href="README-en.md">English</a>] · [<a href="README-zh.md">中文</a>]
 </p>
 
+> **C# 版もあります。** このライブラリをそのまま C# / .NET 8 に移植したものが [`csharp/`](csharp) にあります（使い方は [csharp/README.md](csharp/README.md)、ドキュメントは DocFX で生成する [csharp/docs](csharp/docs)）。
+
 > **既存コードはそのまま動きます。** パッケージ名もインポート名も `twikit` のままなので、`from twikit import Client` などのコードを書き換える必要はありません。
 
 ---

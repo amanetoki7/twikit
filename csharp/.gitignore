@@ -1,0 +1,10 @@
+bin/
+obj/
+*.user
+.vs/
+docs/_site/
+docs/api/*.yml
+docs/api/.manifest
+TestResults/
+# The root .gitignore hides every *.json; the C# port ships test fixtures and docfx.json.
+!*.json
