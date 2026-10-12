@@ -425,7 +425,13 @@ class GuestClient:
         for entry in entries:
             entryId = entry['entryId']
             if entryId.startswith('tweet'):
-                results.append(tweet_from_data(self, entry))
+                tweet = tweet_from_data(self, entry)
+                if tweet is None:
+                    continue
+                # Everything on this timeline is highlighted by definition;
+                # X does not stamp the entries, so record it here.
+                tweet.highlighted = True
+                results.append(tweet)
             elif entryId.startswith('cursor-top'):
                 previous_cursor = entry['content']['value']
             elif entryId.startswith('cursor-bottom'):

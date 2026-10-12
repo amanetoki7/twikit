@@ -1379,6 +1379,7 @@ class Client:
         -------
         Result[:class:`Tweet`]
             An instance of the `Result` class containing the highlighted tweets.
+            Each has :attr:`Tweet.highlighted` set to True.
 
         Examples
         --------
@@ -1412,7 +1413,14 @@ class Client:
         for entry in entries:
             entryId = entry['entryId']
             if entryId.startswith('tweet'):
-                results.append(tweet_from_data(self, entry))
+                tweet = tweet_from_data(self, entry)
+                if tweet is None:
+                    continue
+                # Everything on this timeline is highlighted by definition,
+                # and X does not stamp the entries individually, so this is
+                # the one place the flag is known without a second request.
+                tweet._set_highlighted(True)
+                results.append(tweet)
             elif entryId.startswith('cursor-top'):
                 previous_cursor = entry['content']['value']
             elif entryId.startswith('cursor-bottom'):
@@ -3270,6 +3278,148 @@ class Client:
         """
         _, response = await self.gql.delete_bookmark(tweet_id)
         return response
+
+    def _check_highlight_response(self, response: dict, key: str) -> None:
+        # The web client treats anything but `{key: {"success": true}}` as a
+        # failure, so do the same rather than hand back a 200 that changed
+        # nothing. A refusal (no Premium, somebody else's tweet) arrives as an
+        # `errors` entry next to a `data` that lacks the key.
+        errors = fatal_errors(response, key)
+        if errors:
+            raise_exceptions_from_response(errors)
+            raise TwitterException(errors[0].get('message') or errors[0])
+        data = response.get('data') if isinstance(response, dict) else None
+        result = subobject(data or {}, key)
+        if result.get('success') is not True:
+            # Measured 2026-10-12: highlighting a tweet that is not yours
+            # answers 200 with `{"message": "user can only add his own
+            # tweet", "success": false}` - no `errors` entry at all - so the
+            # reason has to be read from here.
+            raise TwitterException(
+                result.get('message')
+                or f'X did not confirm the highlight change ({key}): {result!r}'
+            )
+
+    async def highlight_tweet(self, tweet_id: str) -> Response:
+        """
+        Adds a tweet to the Highlights tab of your profile.
+
+        Highlights are a Premium feature: the tweet has to be your own and
+        the account needs an active subscription, otherwise X refuses.
+
+        Parameters
+        ----------
+        tweet_id : :class:`str`
+            The ID of the tweet to highlight.
+
+        Returns
+        -------
+        :class:`httpx.Response`
+            Response returned from twitter api.
+
+        Raises
+        ------
+        :exc:`TwitterException`
+            X did not confirm the change - the account is not Premium, the
+            tweet is not yours, or the response lacked ``success: true``.
+
+        Examples
+        --------
+        >>> tweet_id = '...'
+        >>> await client.highlight_tweet(tweet_id)
+
+        See Also
+        --------
+        .unhighlight_tweet
+        .is_tweet_highlighted
+        .get_user_highlights_tweets
+        """
+        response, http_response = await self.gql.create_highlight(tweet_id)
+        self._check_highlight_response(response, 'tweet_highlights_put')
+        return http_response
+
+    async def unhighlight_tweet(self, tweet_id: str) -> Response:
+        """
+        Removes a tweet from the Highlights tab of your profile.
+
+        Parameters
+        ----------
+        tweet_id : :class:`str`
+            The ID of the tweet to remove from Highlights.
+
+        Returns
+        -------
+        :class:`httpx.Response`
+            Response returned from twitter api.
+
+        Raises
+        ------
+        :exc:`TwitterException`
+            X did not confirm the change (see :meth:`highlight_tweet`).
+
+        Examples
+        --------
+        >>> tweet_id = '...'
+        >>> await client.unhighlight_tweet(tweet_id)
+
+        See Also
+        --------
+        .highlight_tweet
+        """
+        response, http_response = await self.gql.delete_highlight(tweet_id)
+        self._check_highlight_response(response, 'tweet_highlights_delete')
+        return http_response
+
+    async def is_tweet_highlighted(self, tweet_id: str) -> bool:
+        """
+        Checks whether a tweet is in its author's Highlights tab.
+
+        This is the query the web client runs when a tweet's menu is opened,
+        and it is the only document X exposes the flag through - timelines
+        and tweet lookups never carry it, which is why
+        :attr:`Tweet.highlighted` stays None until this (or
+        :meth:`Tweet.is_highlighted`) has been called.
+
+        Parameters
+        ----------
+        tweet_id : :class:`str`
+            The ID of the tweet.
+
+        Returns
+        -------
+        :class:`bool`
+            True when the tweet is highlighted.
+
+        Raises
+        ------
+        :exc:`TweetNotAvailable`
+            X returned no tweet for the id (deleted, protected or invalid).
+
+        Examples
+        --------
+        >>> await client.is_tweet_highlighted('...')
+        True
+
+        See Also
+        --------
+        .highlight_tweet
+        .unhighlight_tweet
+        """
+        response, _ = await self.gql.highlight_tweet_sheet_query(tweet_id)
+        errors = fatal_errors(response, 'highlights_info')
+        if errors:
+            raise_exceptions_from_response(errors)
+            raise TwitterException(errors[0].get('message') or errors[0])
+        data = response.get('data') if isinstance(response, dict) else None
+        result = subobject(subobject(data or {}, 'tweet_result_by_rest_id'), 'result')
+        if 'tweet' in result:
+            result = subobject(result, 'tweet')
+        info = result.get('highlights_info')
+        if not isinstance(info, dict) or 'highlighted' not in info:
+            raise TweetNotAvailable(
+                f'X returned no highlight state for tweet {tweet_id}: {result!r}'
+            )
+        return bool(info['highlighted'])
 
     async def get_bookmarks(
         self, count: int = 20,

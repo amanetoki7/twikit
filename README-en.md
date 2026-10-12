@@ -184,6 +184,7 @@ More examples: [examples](examples)
 - `Client.get_dm_inbox()`, `create_group()`, `delete_dm_conversation()` — the DM inbox, group creation and conversation deletion.
 - `Client.update_profile()`, `get_about_account()`, `get_user_spotlights()`, `get_user_lists()`, `get_muted_users()`, `get_blocked_users()`.
 - `Client.get_user_mentions()`, `search_tweets_by_date()`, `get_thread()`, `get_tweet_by_url()`, `get_explore_page()`.
+- `Client.highlight_tweet()`, `unhighlight_tweet()`, `is_tweet_highlighted()` and `Tweet.highlighted` / `Tweet.highlight()` / `Tweet.unhighlight()` / `Tweet.is_highlighted()` — add a tweet to or remove it from the profile's Highlights tab and check whether it is there (Premium only). X does not ship the flag with timelines, so `Tweet.highlighted` is only set for tweets from `get_user_highlights_tweets()` or after `is_highlighted()` has been awaited. `get_user_highlights_tweets()` was also brought up to the current (2026-10) query id and features.
 - `twikit.SearchOptions` / `twikit.build_query` — search query building.
 - `twikit.Article`, `twikit.Conversation` — long-form articles and DM conversations.
 - `twikit.spaces` — the Spaces classes (`Spaces`, `Space`, `SpaceChat`, `SpaceVoiceSession`, ...).

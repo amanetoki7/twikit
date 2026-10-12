@@ -24,6 +24,7 @@ Authorization: You've hit the daily limit. Subscribe to Premium for higher limit
 | change_group_name                     | 900   | {GroupID}/update_name.json          |
 | get_group_dm_history, get_dm_history  | 900   | conversation/{ConversationID}.json  |
 | bookmark_tweet                        | -     | CreateBookmark                      |
+| highlight_tweet                       | -     | CreateHighlight                     |
 | create_poll                           | -     | cards/create.json                   |
 | follow_user                           | 15    | friendships/create.json             |
 | create_list                           | -     | CreateList                          |
@@ -31,6 +32,7 @@ Authorization: You've hit the daily limit. Subscribe to Premium for higher limit
 | create_scheduled_tweet                | -     | CreateScheduledTweet                |
 | create_tweet                          | 300*  | CreateTweet                         |
 | delete_bookmark                       | -     | DeleteBookmark                      |
+| unhighlight_tweet                     | -     | DeleteHighlight                     |
 | delete_dm                             | -     | DMMessageDeleteMutation             |
 | delete_list_banner                    | -     | DeleteListBanner                    |
 | delete_retweet                        | -     | DeleteRetweet                       |
@@ -45,6 +47,7 @@ Authorization: You've hit the daily limit. Subscribe to Premium for higher limit
 | get_user_followers_you_know           | 500   | FollowersYouKnow                    |
 | get_user_following                    | 500   | Following                           |
 | get_guest_token                       | -     | guest/activate.json                 |
+| is_tweet_highlighted                  | -     | HighlightTweetSheetQuery            |
 | get_latest_timeline                   | 500   | HomeLatestTimeline                  |
 | get_timeline                          | 500   | HomeTimeline                        |
 | -                                     | 450   | dm/inbox_initial_state.json         |
@@ -79,6 +82,7 @@ Authorization: You've hit the daily limit. Subscribe to Premium for higher limit
 | upload_media                          | -     | media/upload.json                   |
 | get_user_by_id                        | 500   | UserByRestId                        |
 | get_user_by_screen_name               | 95    | UserByScreenName                    |
+| get_user_highlights_tweets            | -     | UserHighlightsTweets                |
 | get_user_tweets[tweet_type="Likes"]   | 500   | Likes                               |
 | get_user_tweets[tweet_type="Media"]   | 500   | UserMedia                           |
 | get_user_tweets[tweet_type="Tweets"]  | 50    | UserTweets                          |

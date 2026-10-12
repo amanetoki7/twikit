@@ -184,6 +184,7 @@ await client.get_trends('trending')                 # 热门趋势
 - `Client.get_dm_inbox()`、`create_group()`、`delete_dm_conversation()` — 私信收件箱、创建群组、删除会话。
 - `Client.update_profile()`、`get_about_account()`、`get_user_spotlights()`、`get_user_lists()`、`get_muted_users()`、`get_blocked_users()`。
 - `Client.get_user_mentions()`、`search_tweets_by_date()`、`get_thread()`、`get_tweet_by_url()`、`get_explore_page()`。
+- `Client.highlight_tweet()`、`unhighlight_tweet()`、`is_tweet_highlighted()` 以及 `Tweet.highlighted` / `Tweet.highlight()` / `Tweet.unhighlight()` / `Tweet.is_highlighted()` — 把推文加入或移出个人资料的「精选」标签页，并查询是否已精选（仅限 Premium）。X 不会在时间线中返回这个标志，所以 `Tweet.highlighted` 只对来自 `get_user_highlights_tweets()` 的推文或在调用 `is_highlighted()` 之后才有值。`get_user_highlights_tweets()` 也已更新到当前（2026-10）的 query id 和 features。
 - `twikit.SearchOptions` / `twikit.build_query` — 构建搜索查询。
 - `twikit.Article`、`twikit.Conversation` — 长文与私信会话。
 - `twikit.spaces` — Spaces 相关的类（`Spaces`、`Space`、`SpaceChat`、`SpaceVoiceSession` 等）。

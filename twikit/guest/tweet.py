@@ -58,6 +58,10 @@ class Tweet:
         The count of bookmarks for the tweet.
     bookmarked : :class:`bool`
         Indicates if the tweet is bookmarked.
+    highlighted : :class:`bool` | None
+        Whether the tweet sits in its author's Highlights tab. Only known
+        (True) for tweets from :meth:`GuestClient.get_user_highlights_tweets`;
+        None elsewhere, because X does not send the flag with timelines.
     place : :class:`.Place` | None
         The location associated with the tweet.
     editable_until_msecs : :class:`int`
@@ -120,6 +124,8 @@ class Tweet:
         self._place_data = legacy.get('place')
         self.bookmark_count: int = legacy.get('bookmark_count')
         self.bookmarked: bool = legacy.get('bookmarked')
+        self.highlighted: bool | None = subobject(
+            data, 'highlights_info').get('highlighted')
         self.edit_tweet_ids: list[int] = data['edit_control'].get('edit_tweet_ids', [])
         self.editable_until_msecs: int = data['edit_control'].get('editable_until_msecs')
         self.is_translatable: bool = data.get('is_translatable')

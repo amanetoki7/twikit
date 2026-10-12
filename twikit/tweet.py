@@ -65,6 +65,12 @@ class Tweet:
         The count of bookmarks for the tweet.
     bookmarked : :class:`bool`
         Indicates if the tweet is bookmarked.
+    highlighted : :class:`bool` | None
+        Whether the tweet sits in its author's Highlights tab (a Premium
+        feature). X does not send this with timelines or tweet lookups, so
+        it is None - meaning unknown, not "no" - unless the tweet came from
+        :meth:`Client.get_user_highlights_tweets` or :meth:`is_highlighted`,
+        :meth:`highlight` or :meth:`unhighlight` has been awaited on it.
     place : :class:`.Place` | None
         The location associated with the tweet.
     editable_until_msecs : :class:`int`
@@ -247,6 +253,19 @@ class Tweet:
     @property
     def bookmarked(self) -> bool:
         return self._legacy.get('bookmarked')
+
+    @property
+    def highlighted(self) -> bool | None:
+        # Only HighlightTweetSheetQuery reports `highlights_info` on a tweet;
+        # every timeline document leaves it out, so absence has to read as
+        # unknown rather than False.
+        return subobject(self._data, 'highlights_info').get('highlighted')
+
+    def _set_highlighted(self, value: bool) -> None:
+        self._data['highlights_info'] = {
+            **subobject(self._data, 'highlights_info'),
+            'highlighted': value
+        }
 
     @property
     def edit_tweet_ids(self) -> list[int]:
@@ -542,6 +561,66 @@ class Tweet:
         Client.delete_bookmark
         """
         return await self._client.delete_bookmark(self.id)
+
+    async def highlight(self) -> Response:
+        """
+        Adds the tweet to the Highlights tab of your profile (Premium only).
+
+        Returns
+        -------
+        :class:`httpx.Response`
+            Response returned from twitter api.
+
+        See Also
+        --------
+        Client.highlight_tweet
+        """
+        response = await self._client.highlight_tweet(self.id)
+        self._set_highlighted(True)
+        return response
+
+    async def unhighlight(self) -> Response:
+        """
+        Removes the tweet from the Highlights tab of your profile.
+
+        Returns
+        -------
+        :class:`httpx.Response`
+            Response returned from twitter api.
+
+        See Also
+        --------
+        Client.unhighlight_tweet
+        """
+        response = await self._client.unhighlight_tweet(self.id)
+        self._set_highlighted(False)
+        return response
+
+    async def is_highlighted(self) -> bool:
+        """
+        Asks X whether the tweet is currently highlighted and stores the
+        answer in :attr:`highlighted`.
+
+        Returns
+        -------
+        :class:`bool`
+            True when the tweet is in its author's Highlights tab.
+
+        Examples
+        --------
+        >>> tweet.highlighted      # None: timelines do not carry the flag
+        >>> await tweet.is_highlighted()
+        True
+        >>> tweet.highlighted
+        True
+
+        See Also
+        --------
+        Client.is_tweet_highlighted
+        """
+        highlighted = await self._client.is_tweet_highlighted(self.id)
+        self._set_highlighted(highlighted)
+        return highlighted
 
     async def reply(
         self,

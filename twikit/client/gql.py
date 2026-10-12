@@ -71,7 +71,17 @@ class Endpoint:
     USER_TWEETS_AND_REPLIES = url('wc5DRl4VaW5lSqJ8YbftZQ/UserTweetsAndReplies')
     USER_MEDIA = url('2DC9TKrcUzwGC_QskSVl5w/UserMedia')
     USER_LIKES = url('BEthBswU1Bt209H5xptp4Q/Likes')
-    USER_HIGHLIGHTS_TWEETS = url('Ijy4LdX8ZYTy1PzQn8xC4g/UserHighlightsTweets')
+    # Highlights (Premium). Query ids and variable shapes captured from the
+    # web client on 2026-10-12. The mutations take `tweet_id` alone and
+    # answer `tweet_highlights_put` / `tweet_highlights_delete` with a bare
+    # `success` flag; HighlightTweetSheetQuery is what the caret menu calls
+    # to decide between "Add to" and "Remove from Highlights", and it is the
+    # only document that reports `highlights_info.highlighted` on a tweet -
+    # none of the timeline documents carry it.
+    USER_HIGHLIGHTS_TWEETS = url('Ducf_uu7enyuuE2kjOwFcw/UserHighlightsTweets')
+    CREATE_HIGHLIGHT = url('7jEc7ECTTDcNaqsMhjTxXg/CreateHighlight')
+    DELETE_HIGHLIGHT = url('ea-VVDSLIEYNY2_2aPg3Uw/DeleteHighlight')
+    HIGHLIGHT_TWEET_SHEET_QUERY = url('j5-kjpQseTlPnVtfck8i_Q/HighlightTweetSheetQuery')
     HOME_TIMELINE = url('-X_hcgQzmHGl29-UXxz4sw/HomeTimeline')
     HOME_LATEST_TIMELINE = url('U0cdisy7QFIoTfu3-Okw0A/HomeLatestTimeline')
     FAVORITE_TWEET = url('lI07N6Otwv1PhnEgXILM7A/FavoriteTweet')
@@ -420,12 +430,31 @@ class GQLClient:
         }
         if cursor is not None:
             variables['cursor'] = cursor
+        params = {
+            'fieldToggles': {
+                'withPayments': False,
+                'withArticlePlainText': False
+            }
+        }
         return await self.gql_get(
             Endpoint.USER_HIGHLIGHTS_TWEETS,
             variables,
             USER_HIGHLIGHTS_TWEETS_FEATURES,
-            self.base._base_headers
+            self.base._base_headers,
+            extra_params=params
         )
+
+    async def create_highlight(self, tweet_id):
+        variables = {'tweet_id': tweet_id}
+        return await self.gql_post(Endpoint.CREATE_HIGHLIGHT, variables)
+
+    async def delete_highlight(self, tweet_id):
+        variables = {'tweet_id': tweet_id}
+        return await self.gql_post(Endpoint.DELETE_HIGHLIGHT, variables)
+
+    async def highlight_tweet_sheet_query(self, tweet_id):
+        variables = {'tweet_id': tweet_id}
+        return await self.gql_get(Endpoint.HIGHLIGHT_TWEET_SHEET_QUERY, variables)
 
     async def home_timeline(self, count, seen_tweet_ids, cursor):
         variables = {

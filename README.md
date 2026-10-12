@@ -184,6 +184,7 @@ await client.get_trends('trending')                 # トレンド
 - `Client.get_dm_inbox()`、`create_group()`、`delete_dm_conversation()` — DM の受信箱一覧、グループ作成、会話の削除。
 - `Client.update_profile()`、`get_about_account()`、`get_user_spotlights()`、`get_user_lists()`、`get_muted_users()`、`get_blocked_users()`。
 - `Client.get_user_mentions()`、`search_tweets_by_date()`、`get_thread()`、`get_tweet_by_url()`、`get_explore_page()`。
+- `Client.highlight_tweet()`、`unhighlight_tweet()`、`is_tweet_highlighted()` と `Tweet.highlighted` / `Tweet.highlight()` / `Tweet.unhighlight()` / `Tweet.is_highlighted()` — プロフィールの「ハイライト」タブへの追加・解除と、ハイライト済みかの確認（Premium 限定）。X はタイムラインにこのフラグを含めないため、`Tweet.highlighted` は `get_user_highlights_tweets()` で取得したツイートか、`is_highlighted()` を呼んだあとだけ値が入ります。`get_user_highlights_tweets()` の query id / features も 2026-10 時点のものへ更新しました。
 - `twikit.SearchOptions` / `twikit.build_query` — 検索クエリの組み立て。
 - `twikit.Article`、`twikit.Conversation` — 長文記事と DM の会話。
 - `twikit.spaces` — スペース関連のクラス群（`Spaces`、`Space`、`SpaceChat`、`SpaceVoiceSession` など）。
