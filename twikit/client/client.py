@@ -51,7 +51,7 @@ from ..notification import Notification
 from ..spaces import Spaces
 from ..streaming import Payload, StreamingSession, _payload_from_data
 from ..trend import Location, PlaceTrend, PlaceTrends, Trend
-from ..tweet import CommunityNote, Poll, ScheduledTweet, Tweet, tweet_from_data
+from ..tweet import CommunityNote, DraftTweet, Poll, ScheduledTweet, Tweet, tweet_from_data
 from ..ui_metrics import solve_ui_metrics
 from ..user import User
 from ..utils import (
@@ -2581,6 +2581,232 @@ class Client:
         """
         _, response = await self.gql.delete_scheduled_tweet(tweet_id)
         return response
+
+    async def get_draft_tweets(self, ascending: bool = False) -> list[DraftTweet]:
+        """
+        Retrieves the drafts ("Unsent posts" > "Drafts").
+
+        Parameters
+        ----------
+        ascending : :class:`bool`, default=False
+            Oldest first. The default (False) is the newest-first order the
+            web client uses.
+
+        Returns
+        -------
+        list[:class:`DraftTweet`]
+            The drafts.
+
+        Examples
+        --------
+        >>> for draft in await client.get_draft_tweets():
+        ...     print(draft.id, draft.text)
+
+        See Also
+        --------
+        .create_draft_tweet
+        .delete_draft_tweets
+        """
+        response, _ = await self.gql.fetch_draft_tweets(ascending)
+        errors = fatal_errors(response, 'viewer')
+        if errors:
+            raise_exceptions_from_response(errors)
+            raise TwitterException(errors[0].get('message') or errors[0])
+        data = response.get('data') if isinstance(response, dict) else None
+        drafts = subobject(subobject(data or {}, 'viewer'), 'draft_list').get('response_data') or []
+        return [DraftTweet(self, draft) for draft in drafts]
+
+    async def create_draft_tweet(
+        self,
+        text: str = '',
+        media_ids: list[str] | None = None,
+        attachment_url: str | None = None,
+        in_reply_to: str | None = None
+    ) -> str:
+        """
+        Saves a draft. The same ``post_tweet_request`` as
+        :meth:`create_scheduled_tweet` is sent (captured from the web client
+        on 2026-10-23). Use :meth:`post_draft_tweet` to post it.
+
+        Parameters
+        ----------
+        text : :class:`str`, default=''
+            The text.
+        media_ids : list[:class:`str`], default=None
+            Media ids to attach.
+        attachment_url : :class:`str`, default=None
+            URL of the tweet to quote.
+        in_reply_to : :class:`str`, default=None
+            ID of the tweet to reply to.
+
+        Returns
+        -------
+        :class:`str`
+            The ID of the draft.
+
+        Raises
+        ------
+        :exc:`CouldNotTweet`
+            X returned no draft id.
+
+        Examples
+        --------
+        >>> draft_id = await client.create_draft_tweet('write this later')
+
+        See Also
+        --------
+        .get_draft_tweets
+        .delete_draft_tweets
+        """
+        _check_media_ids(media_ids)
+        response, _ = await self.gql.create_draft_tweet(text, media_ids, attachment_url, in_reply_to)
+        errors = fatal_errors(response, 'tweet')
+        if errors:
+            raise_exceptions_from_response(errors)
+            raise CouldNotTweet(
+                errors[0].get('message') if isinstance(errors[0], dict)
+                else errors[0]
+            )
+        data = response.get('data') if isinstance(response, dict) else None
+        tweet = (data or {}).get('tweet')
+        draft_id = tweet.get('rest_id') if isinstance(tweet, dict) else None
+        if not draft_id:
+            raise CouldNotTweet(f'X returned no draft tweet id: {response!r}')
+        return draft_id
+
+    async def delete_draft_tweets(self, draft_tweet_ids: list[str]) -> Response:
+        """
+        Deletes drafts in one request.
+
+        Parameters
+        ----------
+        draft_tweet_ids : list[:class:`str`]
+            The IDs of the drafts to delete.
+
+        Returns
+        -------
+        :class:`httpx.Response`
+            Response returned from twitter api.
+
+        Raises
+        ------
+        :exc:`TwitterException`
+            X did not answer ``draft_tweets_batch_delete: "Done"``.
+
+        See Also
+        --------
+        .delete_draft_tweet
+        """
+        response, http_response = await self.gql.delete_draft_tweets(draft_tweet_ids)
+        errors = fatal_errors(response, 'draft_tweets_batch_delete')
+        if errors:
+            raise_exceptions_from_response(errors)
+            raise TwitterException(errors[0].get('message') or errors[0])
+        data = response.get('data') if isinstance(response, dict) else None
+        if not isinstance(data, dict) or data.get('draft_tweets_batch_delete') != 'Done':
+            raise TwitterException(f'X did not confirm the draft deletion: {data!r}')
+        return http_response
+
+    async def delete_draft_tweet(self, draft_tweet_id: str) -> Response:
+        """
+        Deletes one draft (the singular ``DeleteDraftTweet`` the web client
+        calls after posting a draft; :meth:`delete_draft_tweets` is the batch
+        one used by the drafts list).
+
+        Parameters
+        ----------
+        draft_tweet_id : :class:`str`
+            The ID of the draft to delete.
+
+        Returns
+        -------
+        :class:`httpx.Response`
+            Response returned from twitter api.
+
+        Raises
+        ------
+        :exc:`TwitterException`
+            X did not answer ``drafttweet_delete: "Done"``.
+        """
+        response, http_response = await self.gql.delete_draft_tweet(draft_tweet_id)
+        errors = fatal_errors(response, 'drafttweet_delete')
+        if errors:
+            raise_exceptions_from_response(errors)
+            raise TwitterException(errors[0].get('message') or errors[0])
+        data = response.get('data') if isinstance(response, dict) else None
+        if not isinstance(data, dict) or data.get('drafttweet_delete') != 'Done':
+            raise TwitterException(f'X did not confirm the draft deletion: {data!r}')
+        return http_response
+
+    async def post_draft_tweet(self, draft: DraftTweet | str) -> Tweet:
+        """
+        Posts a draft, then deletes it.
+
+        X has no "post a draft" API. The web client builds an ordinary
+        CreateTweet from the stored request (text, media, quoted URL, reply
+        target) and then calls DeleteDraftTweet (captured 2026-10-23); this
+        sends the same two requests. If the tweet was posted but the draft
+        could not be deleted, the post cannot be undone, so a warning is
+        emitted instead of an exception and the tweet is returned. Thread
+        drafts (``thread_tweets``) are refused before anything is sent, as
+        the web client's way of posting them has not been observed.
+
+        Parameters
+        ----------
+        draft : :class:`DraftTweet` | :class:`str`
+            The draft, or its ID (looked up with :meth:`get_draft_tweets`).
+
+        Returns
+        -------
+        :class:`Tweet`
+            The posted tweet.
+
+        Raises
+        ------
+        :exc:`NotFound`
+            No draft has the given ID.
+        :exc:`TwitterException`
+            The draft is a thread.
+        :exc:`CouldNotTweet`
+            The tweet could not be posted (the draft is kept).
+
+        Examples
+        --------
+        >>> drafts = await client.get_draft_tweets()
+        >>> tweet = await client.post_draft_tweet(drafts[0])
+        >>> tweet = await drafts[1].post()   # same thing
+
+        See Also
+        --------
+        .get_draft_tweets
+        .create_draft_tweet
+        """
+        if isinstance(draft, str):
+            draft_id = draft
+            draft = next(
+                (d for d in await self.get_draft_tweets() if d.id == draft_id), None
+            )
+            if draft is None:
+                raise NotFound(f'Draft {draft_id} was not found.')
+        if draft.thread_tweets:
+            raise TwitterException(
+                f'Draft {draft.id} is a thread ({len(draft.thread_tweets)} '
+                'follow-up tweets); posting thread drafts is not supported.'
+            )
+        tweet = await self.create_tweet(
+            draft.text,
+            media_ids=draft.media_ids or None,
+            reply_to=draft.in_reply_to_tweet_id,
+            attachment_url=draft.attachment_url
+        )
+        try:
+            await self.delete_draft_tweet(draft.id)
+        except TwitterException as e:
+            warnings.warn(
+                f'Posted draft {draft.id} as tweet {tweet.id} but could not '
+                f'delete the draft: {e}'
+            )
+        return tweet
 
     async def _get_tweet_engagements(
         self, tweet_id: str, count: int, cursor: str, f

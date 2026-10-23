@@ -67,6 +67,21 @@ class Endpoint:
     TWEET_RESULT_BY_REST_ID = url('LkId5Akr61BS6BmOIcffRg/TweetResultByRestId')
     FETCH_SCHEDULED_TWEETS = url('H2elmT2R9DLhWoo0DZFNkA/FetchScheduledTweets')
     DELETE_SCHEDULED_TWEET = url('CTOVqej0JBXAZSwkp1US0g/DeleteScheduledTweet')
+    # Drafts ("Unsent posts" > "Drafts"). Query ids and variable shapes
+    # captured from the web client on 2026-10-23. FetchDraftTweets takes
+    # `ascending` and answers `viewer.draft_list.response_data`;
+    # CreateDraftTweet takes the same `post_tweet_request` as
+    # CreateScheduledTweet and answers `tweet.rest_id`; DeleteDraftTweets
+    # takes a list of ids and answers `draft_tweets_batch_delete: "Done"`;
+    # DeleteDraftTweet takes one id and answers `drafttweet_delete: "Done"`.
+    # There is no "post a draft" document: the web client sends an ordinary
+    # CreateTweet built from the stored request and then DeleteDraftTweet
+    # (captured 2026-10-23). A reply draft stores `in_reply_to_status_id`
+    # with `auto_populate_reply_metadata: true`.
+    FETCH_DRAFT_TWEETS = url('L9RqKWmAWxK6vGtR3Qdsxw/FetchDraftTweets')
+    CREATE_DRAFT_TWEET = url('cH9HZWz_EW9gnswvA4ZRiQ/CreateDraftTweet')
+    DELETE_DRAFT_TWEET = url('bkh9G3FGgTldS9iTKWWYYw/DeleteDraftTweet')
+    DELETE_DRAFT_TWEETS = url('h0rzaIYc9-v3zTQvx1J8OA/DeleteDraftTweets')
     RETWEETERS = url('_wJOTLm5HMqNdcr1nGWlyA/Retweeters')
     FAVORITERS = url('JpUz3qfNTiMbhqmJOvVJSw/Favoriters')
     FETCH_COMMUNITY_NOTE = url('fKWPPj271aTM-AB9Xp48IA/BirdwatchFetchOneNote')
@@ -376,6 +391,36 @@ class GQLClient:
     async def delete_scheduled_tweet(self, tweet_id):
         variables = {'scheduled_tweet_id': tweet_id}
         return await self.gql_post(Endpoint.DELETE_SCHEDULED_TWEET, variables)
+
+    async def fetch_draft_tweets(self, ascending=False):
+        variables = {'ascending': ascending}
+        return await self.gql_get(Endpoint.FETCH_DRAFT_TWEETS, variables)
+
+    async def create_draft_tweet(self, text, media_ids, attachment_url, in_reply_to=None):
+        request = {
+            # The web client sets this only for replies.
+            'auto_populate_reply_metadata': in_reply_to is not None,
+            'status': text,
+            'exclude_reply_user_ids': [],
+            'media_ids': media_ids or [],
+            'thread_tweets': []
+        }
+        if in_reply_to is not None:
+            request['in_reply_to_status_id'] = in_reply_to
+        # A quoted tweet is stored as its URL, the same way the web client
+        # does it.
+        if attachment_url is not None:
+            request['attachment_url'] = attachment_url
+        variables = {'post_tweet_request': request}
+        return await self.gql_post(Endpoint.CREATE_DRAFT_TWEET, variables)
+
+    async def delete_draft_tweet(self, draft_tweet_id):
+        variables = {'draft_tweet_id': draft_tweet_id}
+        return await self.gql_post(Endpoint.DELETE_DRAFT_TWEET, variables)
+
+    async def delete_draft_tweets(self, draft_tweet_ids):
+        variables = {'draft_tweet_ids': list(draft_tweet_ids)}
+        return await self.gql_post(Endpoint.DELETE_DRAFT_TWEETS, variables)
 
     async def tweet_engagements(self, tweet_id, count, cursor, endpoint):
         variables = {

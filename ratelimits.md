@@ -30,6 +30,7 @@ Authorization: You've hit the daily limit. Subscribe to Premium for higher limit
 | create_list                           | -     | CreateList                          |
 | retweet                               | -     | CreateRetweet                       |
 | create_scheduled_tweet                | -     | CreateScheduledTweet                |
+| create_draft_tweet                    | 500   | CreateDraftTweet                    |
 | create_tweet                          | 300*  | CreateTweet                         |
 | delete_bookmark                       | -     | DeleteBookmark                      |
 | unhighlight_tweet                     | -     | DeleteHighlight                     |
@@ -37,12 +38,15 @@ Authorization: You've hit the daily limit. Subscribe to Premium for higher limit
 | delete_list_banner                    | -     | DeleteListBanner                    |
 | delete_retweet                        | -     | DeleteRetweet                       |
 | delete_scheduled_tweet                | -     | DeleteScheduledTweet                |
+| delete_draft_tweets                   | 50    | DeleteDraftTweets                   |
+| delete_draft_tweet                    | 500   | DeleteDraftTweet                    |
 | delete_tweet                          | -     | DeleteTweet                         |
 | unfollow_user                         | 187   | friendships/destroy.json            |
 | edit_list_banner                      | -     | EditListBanner                      |
 | get_favoriters                        | 500   | Favoriters                          |
 | favorite_tweet                        | -     | FavoriteTweet                       |
 | get_scheduled_tweets                  | 500   | FetchScheduledTweets                |
+| get_draft_tweets                      | 500   | FetchDraftTweets                    |
 | get_user_followers                    | 50    | Followers                           |
 | get_user_followers_you_know           | 500   | FollowersYouKnow                    |
 | get_user_following                    | 500   | Following                           |

@@ -809,6 +809,96 @@ class ScheduledTweet:
         return f'<ScheduledTweet id="{self.id}">'
 
 
+class DraftTweet:
+    """
+    A draft ("Unsent posts" > "Drafts").
+
+    X stores a draft as the same ``post_tweet_request`` it sends when
+    posting. The fields seen on 2026-10-23 are the text (``status``), media
+    ids, the quoted tweet's URL (``attachment_url``), the replied tweet
+    (``in_reply_to_status_id``), the reply-metadata flag, the users excluded
+    from a reply and the thread (``thread_tweets``); anything else is
+    reachable through :attr:`request`. There is no dedicated "post a draft"
+    API: the web client sends an ordinary CreateTweet and then deletes the
+    draft, which is what :meth:`post` does.
+
+    Attributes
+    ----------
+    id : :class:`str`
+        The ID of the draft.
+    text : :class:`str`
+        The text.
+    media_ids : list[:class:`str`]
+        Media ids to attach.
+    attachment_url : :class:`str` | None
+        URL of the quoted tweet, None when the draft is not a quote.
+    in_reply_to_tweet_id : :class:`str` | None
+        ID of the tweet being replied to, None when the draft is not a reply.
+    auto_populate_reply_metadata : :class:`bool`
+        Whether the @-mentions of a reply are filled in automatically.
+    exclude_reply_user_ids : list[:class:`str`]
+        Users excluded from a reply.
+    thread_tweets : list[:class:`dict`]
+        Follow-up tweets of a thread (raw).
+    type : :class:`str` | None
+        The request type (``PostTweetRequest``).
+    user_id : :class:`str` | None
+        The ID of the draft's owner.
+    request : :class:`dict`
+        The stored ``tweet_create_request`` itself.
+    """
+
+    def __init__(self, client: Client, data: dict) -> None:
+        self._client = client
+        self._data = data
+
+        self.id: str = data['rest_id']
+        request = data.get('tweet_create_request') or {}
+        self.request: dict = request
+        self.text: str = request.get('status', '')
+        self.media_ids: list[str] = [str(i) for i in request.get('media_ids') or []]
+        self.attachment_url: str | None = request.get('attachment_url')
+        self.in_reply_to_tweet_id: str | None = request.get('in_reply_to_status_id')
+        self.auto_populate_reply_metadata: bool = bool(request.get('auto_populate_reply_metadata', False))
+        self.exclude_reply_user_ids: list[str] = [str(i) for i in request.get('exclude_reply_user_ids') or []]
+        self.thread_tweets: list[dict] = request.get('thread_tweets') or []
+        self.type: str | None = request.get('type')
+        self.user_id: str | None = (
+            data.get('user_results', {}).get('result', {}).get('rest_id')
+        )
+
+    async def delete(self) -> Response:
+        """
+        Deletes the draft.
+
+        Returns
+        -------
+        :class:`httpx.Response`
+            Response returned from twitter api.
+        """
+        return await self._client.delete_draft_tweet(self.id)
+
+    async def post(self) -> Tweet:
+        """
+        Posts the draft and deletes it (see :meth:`Client.post_draft_tweet`).
+
+        Returns
+        -------
+        :class:`Tweet`
+            The posted tweet.
+        """
+        return await self._client.post_draft_tweet(self)
+
+    def __repr__(self) -> str:
+        return f'<DraftTweet id="{self.id}">'
+
+    def __eq__(self, __value: object) -> bool:
+        return isinstance(__value, DraftTweet) and self.id == __value.id
+
+    def __ne__(self, __value: object) -> bool:
+        return not self == __value
+
+
 class TweetTombstone:
     def __init__(self, client: Client, tweet_id: str, data: dict) -> None:
         self._client = client
