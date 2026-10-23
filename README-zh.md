@@ -185,6 +185,7 @@ await client.get_trends('trending')                 # 热门趋势
 - `Client.update_profile()`、`get_about_account()`、`get_user_spotlights()`、`get_user_lists()`、`get_muted_users()`、`get_blocked_users()`。
 - `Client.get_user_mentions()`、`search_tweets_by_date()`、`get_thread()`、`get_tweet_by_url()`、`get_explore_page()`。
 - `Client.highlight_tweet()`、`unhighlight_tweet()`、`is_tweet_highlighted()` 以及 `Tweet.highlighted` / `Tweet.highlight()` / `Tweet.unhighlight()` / `Tweet.is_highlighted()` — 把推文加入或移出个人资料的「精选」标签页，并查询是否已精选（仅限 Premium）。X 不会在时间线中返回这个标志，所以 `Tweet.highlighted` 只对来自 `get_user_highlights_tweets()` 的推文或在调用 `is_highlighted()` 之后才有值。`get_user_highlights_tweets()` 也已更新到当前（2026-10）的 query id 和 features。
+- `Client.get_original_content_rewards_eligibility()`、`get_creator_subscriptions_eligibility()` — 创作者工作室「原创内容奖励」「订阅」页面的参与条件列表及当前账号的达成情况（`CreatorEligibility` / `CreatorRequirement`：条件文本、是否达成、当前值、进度、备注）。X 以 server-driven UI（`/i/jfapi/`，text/plain 的原始二进制）而非 GraphQL 返回这些页面，因此也包含了解码器（`client.jetfuel.get()` 可获取其他页面）。
 - `twikit.SearchOptions` / `twikit.build_query` — 构建搜索查询。
 - `twikit.Article`、`twikit.Conversation` — 长文与私信会话。
 - `twikit.spaces` — Spaces 相关的类（`Spaces`、`Space`、`SpaceChat`、`SpaceVoiceSession` 等）。

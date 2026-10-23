@@ -133,8 +133,20 @@ Community
    :undoc-members:
    :member-order: bysource
 
+Creator
+---------------------
+
+Creator monetization eligibility (the Creator Studio "eligible / not eligible" pages),
+returned by :meth:`.Client.get_original_content_rewards_eligibility` and
+:meth:`.Client.get_creator_subscriptions_eligibility`.
+
+.. automodule:: twikit.creator
+   :members:
+   :undoc-members:
+   :member-order: bysource
+
 Notification
--------------------
+---------------------
 
 .. autoclass:: twikit.notification.Notification
    :members:

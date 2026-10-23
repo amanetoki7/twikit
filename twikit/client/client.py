@@ -21,6 +21,7 @@ from httpx._utils import URLPattern
 from .._captcha import Capsolver
 from ..bookmark import BookmarkFolder
 from ..community import Community, CommunityMember
+from ..creator import CreatorEligibility, CreatorProgram
 from ..constants import COOKIE_DOMAINS, TOKEN, DOMAIN, TIMELINE_IDS
 from ..errors import (
     AccountLocked,
@@ -72,6 +73,7 @@ from ..utils import (
 from ..x_client_transaction.utils import handle_x_migration
 from ..x_client_transaction import ClientTransaction
 from .gql import GQLClient
+from .jetfuel import JetfuelClient
 from .v11 import V11Client
 
 
@@ -188,6 +190,7 @@ class Client:
 
         self.gql = GQLClient(self)
         self.v11 = V11Client(self)
+        self.jetfuel = JetfuelClient(self)
         # Spaces (create/join/listen/speak/end/chat) — see twikit/spaces.py
         self.spaces = Spaces(self)
         # Headers of the most recent response. X reports the remaining budget
@@ -338,7 +341,9 @@ class Client:
 
         try:
             response_data = response.json()
-        except json.decoder.JSONDecodeError:
+        except (json.decoder.JSONDecodeError, UnicodeDecodeError):
+            # Jetfuel (/i/jfapi/) answers raw binary, which json() rejects
+            # with UnicodeDecodeError rather than JSONDecodeError.
             response_data = response.text
 
         errors = response_data.get('errors') if isinstance(response_data, dict) else None
@@ -383,7 +388,7 @@ class Client:
                     self._remove_duplicate_ct0_cookie()
                     try:
                         response_data = response.json()
-                    except json.decoder.JSONDecodeError:
+                    except (json.decoder.JSONDecodeError, UnicodeDecodeError):
                         response_data = response.text
 
         status_code = response.status_code
@@ -3420,6 +3425,76 @@ class Client:
                 f'X returned no highlight state for tweet {tweet_id}: {result!r}'
             )
         return bool(info['highlighted'])
+
+    async def get_original_content_rewards_eligibility(self) -> CreatorEligibility:
+        """
+        Fetches the requirements of the original content rewards program
+        (post monetization) and how far this account has got - the content
+        of Creator Studio's ``/i/jf/creators/original_content_rewards``.
+
+        As of 2026-10 the requirements are "Subscribed to Premium, Premium+
+        or Premium Business", "18 or older", "At least 500 verified
+        followers" and "At least 500K verified impressions on the home
+        timeline in the last 90 days (replies are not included)". Numeric
+        rows carry the current value (:attr:`CreatorRequirement.value`) and
+        the progress bar (:attr:`CreatorRequirement.progress`).
+
+        X serves the page as server-driven UI (a binary document, not
+        GraphQL); it is decoded here. Other Jetfuel pages can be fetched
+        raw with ``client.jetfuel.get('creators/studio')``.
+
+        Returns
+        -------
+        :class:`CreatorEligibility`
+            The requirements and the account's status.
+
+        Examples
+        --------
+        >>> rewards = await client.get_original_content_rewards_eligibility()
+        >>> rewards.summary
+        '...you need to meet the following requirements:'
+        >>> for r in rewards.requirements:
+        ...     print(r.is_met, r.text, r.value, r.progress)
+        >>> rewards.is_eligible
+        False
+
+        See Also
+        --------
+        .get_creator_subscriptions_eligibility
+        """
+        body, _ = await self.jetfuel.creators_original_content_rewards()
+        return CreatorEligibility._from_bytes(CreatorProgram.ORIGINAL_CONTENT_REWARDS, body)
+
+    async def get_creator_subscriptions_eligibility(self) -> CreatorEligibility:
+        """
+        Fetches the requirements of creator subscriptions and how far this
+        account has got - the content of Creator Studio's
+        ``/i/jf/creators/subscriptionsv2/eligibility``.
+
+        As of 2026-10 the requirements are "Subscribed to Premium and
+        verified", "At least 2,000 verified followers", "At least 5M organic
+        impressions in the last 3 months", "Active on X in the last 30
+        days", "18 or older" and "Eligible for X Money". The page shown once
+        every requirement is met has not been observed, so
+        :attr:`CreatorEligibility.requirements` may come back empty then.
+
+        Returns
+        -------
+        :class:`CreatorEligibility`
+            The requirements and the account's status.
+
+        Examples
+        --------
+        >>> subscriptions = await client.get_creator_subscriptions_eligibility()
+        >>> for r in subscriptions.unmet:
+        ...     print(r.text)
+
+        See Also
+        --------
+        .get_original_content_rewards_eligibility
+        """
+        body, _ = await self.jetfuel.creators_subscriptions_eligibility()
+        return CreatorEligibility._from_bytes(CreatorProgram.SUBSCRIPTIONS, body)
 
     async def get_bookmarks(
         self, count: int = 20,

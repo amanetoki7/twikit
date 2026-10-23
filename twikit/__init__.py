@@ -26,6 +26,7 @@ from .errors import *
 from .utils import SearchOptions, build_query
 from .client.client import Client
 from .community import Community, CommunityCreator, CommunityMember, CommunityRule
+from .creator import CreatorEligibility, CreatorProgram, CreatorRequirement
 from .geo import Place
 from .group import Group, GroupMessage
 from .list import List

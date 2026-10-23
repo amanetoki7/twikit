@@ -83,6 +83,8 @@ Authorization: You've hit the daily limit. Subscribe to Premium for higher limit
 | get_user_by_id                        | 500   | UserByRestId                        |
 | get_user_by_screen_name               | 95    | UserByScreenName                    |
 | get_user_highlights_tweets            | -     | UserHighlightsTweets                |
+| get_original_content_rewards_eligibility | 5000 | jfapi/creators/original_content_rewards |
+| get_creator_subscriptions_eligibility | 5000  | jfapi/creators/subscriptionsv2/eligibility |
 | get_user_tweets[tweet_type="Likes"]   | 500   | Likes                               |
 | get_user_tweets[tweet_type="Media"]   | 500   | UserMedia                           |
 | get_user_tweets[tweet_type="Tweets"]  | 50    | UserTweets                          |

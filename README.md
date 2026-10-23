@@ -185,6 +185,7 @@ await client.get_trends('trending')                 # トレンド
 - `Client.update_profile()`、`get_about_account()`、`get_user_spotlights()`、`get_user_lists()`、`get_muted_users()`、`get_blocked_users()`。
 - `Client.get_user_mentions()`、`search_tweets_by_date()`、`get_thread()`、`get_tweet_by_url()`、`get_explore_page()`。
 - `Client.highlight_tweet()`、`unhighlight_tweet()`、`is_tweet_highlighted()` と `Tweet.highlighted` / `Tweet.highlight()` / `Tweet.unhighlight()` / `Tweet.is_highlighted()` — プロフィールの「ハイライト」タブへの追加・解除と、ハイライト済みかの確認（Premium 限定）。X はタイムラインにこのフラグを含めないため、`Tweet.highlighted` は `get_user_highlights_tweets()` で取得したツイートか、`is_highlighted()` を呼んだあとだけ値が入ります。`get_user_highlights_tweets()` の query id / features も 2026-10 時点のものへ更新しました。
+- `Client.get_original_content_rewards_eligibility()`、`get_creator_subscriptions_eligibility()` — クリエイタースタジオの「オリジナルコンテンツ報酬」「サブスクリプション」の参加条件一覧と達成状況（`CreatorEligibility` / `CreatorRequirement`: 条件文、達成済みか、現在値、進捗、注記）。X はこのページを GraphQL ではなく server-driven UI（`/i/jfapi/`、text/plain の生バイナリ）で返すため、そのデコーダ（`client.jetfuel.get()` で他のページも取得可）も含みます。
 - `twikit.SearchOptions` / `twikit.build_query` — 検索クエリの組み立て。
 - `twikit.Article`、`twikit.Conversation` — 長文記事と DM の会話。
 - `twikit.spaces` — スペース関連のクラス群（`Spaces`、`Space`、`SpaceChat`、`SpaceVoiceSession` など）。
