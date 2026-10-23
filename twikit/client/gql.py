@@ -20,7 +20,12 @@ from ..constants import (
     USER_FEATURES,
     USER_HIGHLIGHTS_TWEETS_FEATURES,
     EXPLORE_PAGE_FEATURES,
-    GENERIC_TIMELINE_FEATURES
+    GENERIC_TIMELINE_FEATURES,
+    BIRDWATCH_NOTES_FEATURES,
+    BIRDWATCH_AUTHENTICATED_PROFILE_FEATURES,
+    BIRDWATCH_PROFILE_FEATURES,
+    BIRDWATCH_CONTRIBUTOR_NOTES_FEATURES,
+    BIRDWATCH_GLOBAL_TIMELINE_FEATURES
 )
 from ..utils import flatten_params, get_query_id
 
@@ -84,7 +89,14 @@ class Endpoint:
     DELETE_DRAFT_TWEETS = url('h0rzaIYc9-v3zTQvx1J8OA/DeleteDraftTweets')
     RETWEETERS = url('_wJOTLm5HMqNdcr1nGWlyA/Retweeters')
     FAVORITERS = url('JpUz3qfNTiMbhqmJOvVJSw/Favoriters')
-    FETCH_COMMUNITY_NOTE = url('fKWPPj271aTM-AB9Xp48IA/BirdwatchFetchOneNote')
+    FETCH_COMMUNITY_NOTE = url('eKB7Azg-Y5Yy0PhXFVDxiQ/BirdwatchFetchOneNote')
+    # Community Notes (Birdwatch), captured from x.com on 2026-10-23.
+    BIRDWATCH_FETCH_NOTES = url('FXliMyVVZbAxaiRcs9USqA/BirdwatchFetchNotes')
+    BIRDWATCH_AUTHENTICATED_USER_PROFILE = url('kD74-qBfrdRT5rO9YOl57g/BirdwatchFetchAuthenticatedUserProfile')
+    BIRDWATCH_PROFILE = url('id9iGfEQF47W1kvRBHUmRQ/BirdwatchFetchBirdwatchProfile')
+    BIRDWATCH_CONTRIBUTOR_NOTES_SLICE = url('iULNpJL6QebO41SxjCbC-g/BirdwatchFetchContributorNotesSlice')
+    BIRDWATCH_GLOBAL_TIMELINE = url('JfSNtbbfLxNc30ssXTHEug/BirdwatchFetchGlobalTimeline')
+    BIRDWATCH_CREATE_RATING = url('gbshFt1Vmddrlio4vHWhhQ/BirdwatchCreateRating')
     USER_TWEETS = url('eoJ5zbv51Z_KVl81v9PmLQ/UserTweets')
     USER_TWEETS_AND_REPLIES = url('wc5DRl4VaW5lSqJ8YbftZQ/UserTweetsAndReplies')
     USER_MEDIA = url('2DC9TKrcUzwGC_QskSVl5w/UserMedia')
@@ -118,7 +130,7 @@ class Endpoint:
     CREATE_BOOKMARK_FOLDER = url('6Xxqpq8TM_CREYiuof_h5w/createBookmarkFolder')
     FOLLOWERS = url('vJijlO_CM7dyGFNjDd7iqQ/Followers')
     EXPLORE_PAGE = url('gjznU4bIOCEjvXD5Un47bw/ExplorePage')
-    GENERIC_TIMELINE_BY_ID = url('BrGScxnisMdTXyeLScaEhQ/GenericTimelineById')
+    GENERIC_TIMELINE_BY_ID = url('SP-q18u35FgLsaeVKFHS2A/GenericTimelineById')
     BLUE_VERIFIED_FOLLOWERS = url('cg6WLW39UujWMeX77xBnOA/BlueVerifiedFollowers')
     FOLLOWERS_YOU_KNOW = url('wIEyYIhzwtDEgBvqDRCDVQ/FollowersYouKnow')
     FOLLOWING = url('b8XpwALENnJdFSHchkK6rw/Following')
@@ -454,6 +466,43 @@ class GQLClient:
     async def bird_watch_one_note(self, note_id):
         variables = {'note_id': note_id}
         return await self.gql_get(Endpoint.FETCH_COMMUNITY_NOTE, variables, COMMUNITY_NOTE_FEATURES)
+
+    async def birdwatch_fetch_notes(self, tweet_id):
+        variables = {'tweet_id': tweet_id}
+        return await self.gql_get(Endpoint.BIRDWATCH_FETCH_NOTES, variables, BIRDWATCH_NOTES_FEATURES)
+
+    async def birdwatch_authenticated_user_profile(self):
+        return await self.gql_get(
+            Endpoint.BIRDWATCH_AUTHENTICATED_USER_PROFILE, {}, BIRDWATCH_AUTHENTICATED_PROFILE_FEATURES
+        )
+
+    async def birdwatch_profile(self, alias):
+        variables = {'alias': alias}
+        return await self.gql_get(Endpoint.BIRDWATCH_PROFILE, variables, BIRDWATCH_PROFILE_FEATURES)
+
+    async def birdwatch_contributor_notes_slice(self, alias, count, include_drafts, cursor):
+        variables = {'count': count, 'alias': alias}
+        if include_drafts:
+            variables['includeDrafts'] = True
+        if cursor is not None:
+            variables['cursor'] = cursor
+        return await self.gql_get(
+            Endpoint.BIRDWATCH_CONTRIBUTOR_NOTES_SLICE, variables, BIRDWATCH_CONTRIBUTOR_NOTES_FEATURES
+        )
+
+    async def birdwatch_global_timeline(self):
+        return await self.gql_get(Endpoint.BIRDWATCH_GLOBAL_TIMELINE, {}, BIRDWATCH_GLOBAL_TIMELINE_FEATURES)
+
+    async def birdwatch_create_rating(self, note_id, tweet_id, data_v2, rating_source, for_live_note):
+        variables = {
+            'note_id': note_id,
+            'tweet_id': tweet_id,
+            'data_v2': data_v2,
+            'rating_source': rating_source,
+            'source_platform': 'BirdwatchWeb',
+            'for_live_note': for_live_note
+        }
+        return await self.gql_post(Endpoint.BIRDWATCH_CREATE_RATING, variables)
 
     async def _get_user_tweets(self, user_id, count, cursor, endpoint):
         variables = {

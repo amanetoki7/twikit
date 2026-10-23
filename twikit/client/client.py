@@ -22,7 +22,11 @@ from .._captcha import Capsolver
 from ..bookmark import BookmarkFolder
 from ..community import Community, CommunityMember
 from ..creator import CreatorEligibility, CreatorProgram
-from ..constants import COOKIE_DOMAINS, TOKEN, DOMAIN, TIMELINE_IDS
+from ..constants import (
+    COOKIE_DOMAINS, TOKEN, DOMAIN, TIMELINE_IDS,
+    COMMUNITY_NOTE_HELPFULNESS_LEVELS, COMMUNITY_NOTE_HELPFUL_TAGS, COMMUNITY_NOTE_NOT_HELPFUL_TAGS
+)
+from ..community_notes import CommunityNotesProfile, CommunityNoteRating
 from ..errors import (
     AccountLocked,
     AccountSuspended,
@@ -2947,6 +2951,364 @@ class Client:
         if 'data_v1' not in note_data:
             raise TwitterException(f'Invalid note id: {note_id}')
         return CommunityNote(self, note_data)
+
+    async def get_community_notes(self, tweet_id: str) -> list[CommunityNote]:
+        """
+        Fetches every community note proposed on a tweet
+        (``BirdwatchFetchNotes``): the ones flagging the post as misleading
+        and the ones saying it is not, whether or not they are shown yet.
+        Each note carries :attr:`CommunityNote.rating_status` and can be
+        rated with :meth:`CommunityNote.rate`.
+
+        Parameters
+        ----------
+        tweet_id : :class:`str`
+
+        Returns
+        -------
+        list[:class:`CommunityNote`]
+            Empty when nobody has written a note on the tweet.
+
+        Raises
+        ------
+        :exc:`NotFound`
+            The tweet does not exist or is not visible.
+
+        Examples
+        --------
+        >>> notes = await client.get_community_notes('2112509081256874183')
+        >>> for note in notes:
+        ...     print(note.classification, note.rating_status, note.text[:40])
+        """
+        response, _ = await self.gql.birdwatch_fetch_notes(tweet_id)
+        result = (
+            (response.get('data') or {}).get('tweet_result_by_rest_id') or {}
+        ).get('result')
+        if result is None:
+            errors = response.get('errors')
+            if errors:
+                raise TwitterException(errors[0].get('message', str(errors[0])))
+            raise NotFound(f'No tweet with id {tweet_id!r}.')
+        notes = []
+        for key in ('misleading_birdwatch_notes', 'not_misleading_birdwatch_notes'):
+            for note in (result.get(key) or {}).get('notes') or []:
+                if isinstance(note, dict) and 'data_v1' in note:
+                    notes.append(CommunityNote(self, note, tweet_id=tweet_id))
+        return notes
+
+    async def _community_notes_alias(self) -> tuple[str, dict]:
+        response, _ = await self.gql.birdwatch_authenticated_user_profile()
+        authenticated = (
+            response.get('data') or {}
+        ).get('authenticated_user_birdwatch_profile')
+        if not authenticated or not authenticated.get('alias'):
+            raise TwitterException(
+                'This account has no Community Notes contributor alias '
+                '(not enrolled, or the alias has not been chosen yet).'
+            )
+        return authenticated['alias'], authenticated
+
+    async def get_community_notes_profile(
+        self, alias: str | None = None
+    ) -> CommunityNotesProfile:
+        """
+        Fetches a Community Notes contributor profile: the rating and
+        writing statistics X shows at ``x.com/i/communitynotes/u/<alias>``.
+
+        With no ``alias`` the logged-in account's own profile is returned,
+        including the enrollment state and how much rating impact is still
+        needed to unlock writing. :attr:`CommunityNotesProfile.rating_impact`
+        and :attr:`CommunityNotesProfile.writing_impact` are computed with the
+        web client's formulas.
+
+        Parameters
+        ----------
+        alias : :class:`str` | None
+            A contributor alias such as ``considerate-vine-conure``. None for
+            the logged-in account.
+
+        Returns
+        -------
+        :class:`CommunityNotesProfile`
+
+        Raises
+        ------
+        :exc:`TwitterException`
+            The logged-in account has no contributor alias.
+        :exc:`NotFound`
+            No profile exists for ``alias``.
+
+        Examples
+        --------
+        >>> me = await client.get_community_notes_profile()
+        >>> me.alias, me.rating_impact, me.successful_rating_needed_to_earn_in
+        ('considerate-vine-conure', 0, 5)
+        >>> other = await client.get_community_notes_profile('likable-savanna-mockingbird')
+        >>> other.writing_impact
+        7
+        """
+        authenticated = None
+        if alias is None:
+            alias, authenticated = await self._community_notes_alias()
+        response, _ = await self.gql.birdwatch_profile(alias)
+        data = (response.get('data') or {}).get('birdwatch_profile_by_alias')
+        if not data:
+            raise NotFound(f'No Community Notes profile with alias {alias!r}.')
+        return CommunityNotesProfile(self, data, authenticated)
+
+    async def get_contributor_community_notes(
+        self,
+        alias: str | None = None,
+        count: int = 10,
+        include_drafts: bool = False,
+        cursor: str | None = None
+    ) -> Result[CommunityNote]:
+        """
+        Fetches the notes written under a contributor alias
+        (``BirdwatchFetchContributorNotesSlice``), newest first. With no
+        ``alias`` the logged-in account's own notes are returned.
+
+        Parameters
+        ----------
+        alias : :class:`str` | None
+        count : :class:`int`, default=10
+        include_drafts : :class:`bool`, default=False
+            True requests the "suggestions" view of the own profile page,
+            which includes unpublished drafts.
+        cursor : :class:`str` | None
+
+        Returns
+        -------
+        Result[:class:`CommunityNote`]
+
+        Notes
+        -----
+        Captured on an account that had not written any note yet, so only the
+        empty shape (``items: []``) has been observed. Items that are not a
+        note object are skipped with a :class:`UserWarning` carrying their
+        keys. Paging through ``slice_info`` is wired up but unverified.
+
+        Examples
+        --------
+        >>> mine = await client.get_contributor_community_notes()
+        >>> for note in mine:
+        ...     print(note.id, note.rating_status, note.text)
+        """
+        if alias is None:
+            alias, _ = await self._community_notes_alias()
+        response, _ = await self.gql.birdwatch_contributor_notes_slice(
+            alias, count, include_drafts, cursor
+        )
+        profile = (response.get('data') or {}).get('birdwatch_profile_by_alias') or {}
+        primary, secondary = ('suggestion_overviews_slice', 'notes_slice')
+        if not include_drafts:
+            primary, secondary = secondary, primary
+        slice_ = profile.get(primary) or profile.get(secondary) or {}
+        notes = []
+        for item in slice_.get('items') or []:
+            note = item.get('note', item) if isinstance(item, dict) else None
+            if isinstance(note, dict) and 'data_v1' in note:
+                notes.append(CommunityNote(self, note))
+            else:
+                warnings.warn(
+                    'Skipped a Community Notes slice item of unknown shape '
+                    f'(keys: {sorted(item) if isinstance(item, dict) else type(item).__name__}). '
+                    'Please report it with the raw response.'
+                )
+        next_cursor = (slice_.get('slice_info') or {}).get('next_cursor')
+        return Result(
+            notes,
+            partial(self.get_contributor_community_notes, alias, count, include_drafts, next_cursor)
+            if next_cursor else None,
+            next_cursor
+        )
+
+    async def get_community_notes_timeline(
+        self,
+        tab: Literal['needs_your_help', 'new', 'rated_helpful'] = 'needs_your_help',
+        count: int = 20,
+        cursor: str | None = None
+    ) -> Result[Tweet]:
+        """
+        Fetches one tab of the Community Notes home page
+        (``x.com/i/communitynotes``): the posts whose notes need ratings,
+        the newest notes, or the notes currently rated helpful.
+
+        The result is a list of tweets. The note X picked for each post is in
+        :attr:`Tweet.community_note` (``{'id', 'text'}``); every note on the
+        post, in a form that can be rated, comes from
+        :meth:`Tweet.get_community_notes`.
+
+        Parameters
+        ----------
+        tab : :class:`str`, default='needs_your_help'
+            ``needs_your_help`` ("評価が必要", the suggested notes to rate),
+            ``new`` ("新しいノート") or ``rated_helpful`` ("「役に立った」と評価済み").
+        count : :class:`int`, default=20
+            Page size for ``new`` / ``rated_helpful``. The ``needs_your_help``
+            tab is a fixed pick of about 15 posts and ignores it.
+        cursor : :class:`str` | None
+
+        Returns
+        -------
+        Result[:class:`Tweet`]
+
+        Notes
+        -----
+        ``needs_your_help`` is served by ``BirdwatchFetchGlobalTimeline``;
+        the other two tabs are ``GenericTimelineById`` with the timeline ids
+        that response lists. X ended all three timelines without a cursor
+        when captured (2026-10-23), so :meth:`Result.next` is normally None.
+
+        Examples
+        --------
+        >>> posts = await client.get_community_notes_timeline('needs_your_help')
+        >>> for tweet in posts:
+        ...     print(tweet.id, tweet.community_note)
+        ...     for note in await tweet.get_community_notes():
+        ...         if note.rating_status == 'NeedsMoreRatings':
+        ...             await note.rate('Helpful', helpful_tags=['GoodSources'])
+        """
+        response, _ = await self.gql.birdwatch_global_timeline()
+        body = (
+            ((response.get('data') or {}).get('viewer') or {}).get('birdwatch_home_page') or {}
+        ).get('body') or {}
+        initial = body.get('initialTimeline') or {}
+        tabs = {
+            t.get('id'): (t.get('timeline') or {}).get('id')
+            for t in body.get('timelines') or []
+        }
+        if tab == initial.get('id') and cursor is None:
+            instructions = first_dict(initial, 'instructions', [])
+        else:
+            timeline_id = tabs.get(tab)
+            if timeline_id is None:
+                raise ValueError(
+                    f'Unknown Community Notes tab {tab!r}; X offers {sorted(tabs)}.'
+                )
+            params = {'withQuickPromoteEligibilityTweetFields': True}
+            if cursor is not None:
+                params['cursor'] = cursor
+            response, _ = await self.gql.generic_timeline_by_id(timeline_id, count, params)
+            instructions = first_dict(response, 'instructions', [])
+        instruction = find_entry_by_type(instructions, 'TimelineAddEntries')
+        if instruction is None:
+            return Result.empty()
+        results = []
+        next_cursor = None
+        previous_cursor = None
+        for entry in instruction.get('entries') or []:
+            entry_id = entry.get('entryId', '')
+            if entry_id.startswith('tweet'):
+                tweet = tweet_from_data(self, entry)
+                if tweet is not None:
+                    results.append(tweet)
+            elif entry_id.startswith('cursor-top'):
+                previous_cursor = entry['content'].get('value')
+            elif entry_id.startswith('cursor-bottom'):
+                next_cursor = entry['content'].get('value')
+        results, overflow = limited(results, count)
+        return Result(
+            results,
+            partial(self.get_community_notes_timeline, tab, count, next_cursor) if next_cursor else None,
+            next_cursor,
+            partial(self.get_community_notes_timeline, tab, count, previous_cursor) if previous_cursor else None,
+            previous_cursor,
+            overflow,
+            count
+        )
+
+    async def rate_community_note(
+        self,
+        note_id: str,
+        tweet_id: str,
+        helpfulness: Literal['Helpful', 'SomewhatHelpful', 'NotHelpful'],
+        helpful_tags: list[str] | None = None,
+        not_helpful_tags: list[str] | None = None,
+        rating_source: str = 'BirdwatchPostDetail',
+        for_live_note: bool = False
+    ) -> CommunityNoteRating:
+        """
+        Rates a community note (``BirdwatchCreateRating``), the same request
+        the "役に立ちましたか？" form on ``x.com/i/birdwatch/t/<tweet_id>`` sends.
+        Rating the same note again replaces the earlier rating.
+
+        Parameters
+        ----------
+        note_id : :class:`str`
+        tweet_id : :class:`str`
+            The post the note is attached to (:attr:`CommunityNote.tweet_id`).
+        helpfulness : :class:`str`
+            ``Helpful``, ``SomewhatHelpful`` or ``NotHelpful``.
+        helpful_tags : list[:class:`str`] | None
+            Why it helped, from :data:`twikit.constants.COMMUNITY_NOTE_HELPFUL_TAGS`:
+            ``Informative``, ``Clear``, ``Empathetic``, ``GoodSources``,
+            ``UniqueContext``, ``AddressesClaim``, ``ImportantContext``,
+            ``UnbiasedLanguage``, ``Other``. The web form asks for these on
+            ``Helpful`` and ``SomewhatHelpful``.
+        not_helpful_tags : list[:class:`str`] | None
+            Why it did not, from :data:`twikit.constants.COMMUNITY_NOTE_NOT_HELPFUL_TAGS`:
+            ``NoSources``, ``Incorrect``, ``Outdated``, ``Biased``,
+            ``MissingKeyPoints``, ``Unclear``, ``Rude``, ``OffTopic``,
+            ``TwitterViolationAny``, ``IrrelevantSources``,
+            ``OpinionSpeculation``, ``NoteNotNeeded``, ``Other``. Asked for on
+            ``NotHelpful`` and ``SomewhatHelpful`` (without ``TwitterViolationAny``).
+        rating_source : :class:`str`, default='BirdwatchPostDetail'
+            Where the rating UI was shown; see
+            :data:`twikit.constants.COMMUNITY_NOTE_RATING_SOURCES`.
+        for_live_note : :class:`bool`, default=False
+
+        Returns
+        -------
+        :class:`CommunityNoteRating`
+            What X stored (``helpfulness_level`` and the tags).
+
+        Raises
+        ------
+        :exc:`ValueError`
+            Unknown ``helpfulness`` or tag.
+        :exc:`TwitterException`
+            X did not confirm the rating.
+
+        Examples
+        --------
+        >>> await client.rate_community_note(
+        ...     '2112716986052755651', '2112686221973754164',
+        ...     'Helpful', helpful_tags=['AddressesClaim']
+        ... )
+        <CommunityNoteRating note_id="2112716986052755651" helpfulness_level="Helpful">
+        >>> await client.rate_community_note(
+        ...     '2112813998781710592', '2112509081256874183',
+        ...     'NotHelpful', not_helpful_tags=['NoSources', 'OpinionSpeculation']
+        ... )
+        """
+        if helpfulness not in COMMUNITY_NOTE_HELPFULNESS_LEVELS:
+            raise ValueError(
+                f'helpfulness must be one of {COMMUNITY_NOTE_HELPFULNESS_LEVELS}, got {helpfulness!r}.'
+            )
+        helpful_tags = list(helpful_tags or [])
+        not_helpful_tags = list(not_helpful_tags or [])
+        unknown = set(helpful_tags) - set(COMMUNITY_NOTE_HELPFUL_TAGS)
+        if unknown:
+            raise ValueError(f'Unknown helpful_tags {sorted(unknown)}; known: {COMMUNITY_NOTE_HELPFUL_TAGS}.')
+        unknown = set(not_helpful_tags) - set(COMMUNITY_NOTE_NOT_HELPFUL_TAGS)
+        if unknown:
+            raise ValueError(f'Unknown not_helpful_tags {sorted(unknown)}; known: {COMMUNITY_NOTE_NOT_HELPFUL_TAGS}.')
+        data_v2 = {'helpfulness_level': helpfulness}
+        if helpful_tags:
+            data_v2['helpful_tags'] = helpful_tags
+        if not_helpful_tags:
+            data_v2['not_helpful_tags'] = not_helpful_tags
+        response, _ = await self.gql.birdwatch_create_rating(
+            note_id, tweet_id, data_v2, rating_source, for_live_note
+        )
+        result = (response.get('data') or {}).get('birdwatchnote_rate_v3')
+        if not result:
+            errors = response.get('errors')
+            if errors:
+                raise TwitterException(errors[0].get('message', str(errors[0])))
+            raise TwitterException(f'X did not confirm the rating: {response}')
+        return CommunityNoteRating(note_id, tweet_id, result)
 
     async def get_user_tweets(
         self,

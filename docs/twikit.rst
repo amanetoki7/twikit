@@ -133,6 +133,23 @@ Community
    :undoc-members:
    :member-order: bysource
 
+Community Notes
+---------------------
+
+Community Notes (Birdwatch): the notes on a post
+(:meth:`.Client.get_community_notes`), the contributor profile with its
+rating / writing impact (:meth:`.Client.get_community_notes_profile`), the
+notes written under an alias (:meth:`.Client.get_contributor_community_notes`),
+the three tabs of ``x.com/i/communitynotes``
+(:meth:`.Client.get_community_notes_timeline`) and rating
+(:meth:`.Client.rate_community_note`). The note class itself is
+:class:`twikit.tweet.CommunityNote`.
+
+.. automodule:: twikit.community_notes
+   :members:
+   :undoc-members:
+   :member-order: bysource
+
 Creator
 ---------------------
 

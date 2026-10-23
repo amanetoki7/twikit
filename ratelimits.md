@@ -20,6 +20,12 @@ Authorization: You've hit the daily limit. Subscribe to Premium for higher limit
 |---------------------------------------|-------|-------------------------------------|
 | add_members_to_group                  | -     | AddParticipantsMutation             |
 | block_user                            | 187   | blocks/create.json                  |
+| rate_community_note                   | 500   | BirdwatchCreateRating               |
+| get_community_notes_profile           | 500   | BirdwatchFetchAuthenticatedUserProfile, BirdwatchFetchBirdwatchProfile |
+| get_contributor_community_notes       | 500   | BirdwatchFetchContributorNotesSlice |
+| get_community_notes_timeline          | 500   | BirdwatchFetchGlobalTimeline, GenericTimelineById |
+| get_community_notes                   | 500   | BirdwatchFetchNotes                 |
+| get_community_note                    | -     | BirdwatchFetchOneNote               |
 | get_user_verified_followers           | 500   | BlueVerifiedFollowers               |
 | get_bookmarks                         | 500   | Bookmarks                           |
 | delete_all_bookmarks                  | -     | BookmarksAllDelete                  |

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from .geo import Place
 from .media import MEDIA_TYPE, _media_from_data
@@ -10,6 +10,7 @@ from .user import User
 from .utils import find_dict, subobject, timestamp_to_datetime
 
 if TYPE_CHECKING:
+    from .community_notes import CommunityNoteRating
     from httpx import Response
 
     from .client.client import Client
@@ -652,6 +653,20 @@ class Tweet:
         """
         return await self._client.unpin_tweet(self.id)
 
+    async def get_community_notes(self) -> list[CommunityNote]:
+        """
+        Fetches every community note proposed on this tweet.
+
+        Returns
+        -------
+        list[:class:`CommunityNote`]
+
+        See Also
+        --------
+        Client.get_community_notes
+        """
+        return await self._client.get_community_notes(self.id)
+
     async def reply(
         self,
         text: str = '',
@@ -1094,8 +1109,22 @@ class CommunityNote:
         Birdwatch profile associated with the note.
     tweet_id : :class:`str`
         The ID of the tweet associated with the note.
+    classification : :class:`str` | None
+        ``MisinformedOrPotentiallyMisleading`` or ``NotMisleading``.
+    not_misleading_tags : list[:class:`str`]
+        Tags of a ``NotMisleading`` note (``ClearlySatire``, ``FactuallyCorrect``, ...).
+    not_helpful_tags : list[:class:`str`]
+        Why raters found the note not helpful (present once X has decided).
+    rating_status : :class:`str` | None
+        ``NeedsMoreRatings``, ``CurrentlyRatedHelpful`` or ``CurrentlyRatedNotHelpful``.
+    language : :class:`str` | None
+    decided_by : :class:`str` | None
+        The scoring model that produced ``rating_status`` (``CoreModel (v1.1)``).
+    is_url_note : :class:`bool`
+    author_alias : :class:`str` | None
+        The contributor alias of the note writer (``birdwatch_profile.alias``).
     """
-    def __init__(self, client: Client, data: dict) -> None:
+    def __init__(self, client: Client, data: dict, tweet_id: str | None = None) -> None:
         self._client = client
         self.id: str = data['rest_id']
 
@@ -1110,11 +1139,42 @@ class CommunityNote:
         self.is_media_note: bool = data.get('is_media_note')
         self.media_note_matches: str = data.get('media_note_matches')
         self.birdwatch_profile: dict = data.get('birdwatch_profile')
-        self.tweet_id: str = data['tweet_results']['result']['rest_id']
+        self.tweet_id: str = (
+            ((data.get('tweet_results') or {}).get('result') or {}).get('rest_id')
+            or tweet_id
+        )
+        self.classification: str | None = data_v1.get('classification')
+        self.not_misleading_tags: list[str] = data_v1.get('not_misleading_tags') or []
+        self.not_helpful_tags: list[str] = data.get('not_helpful_tags') or []
+        self.rating_status: str | None = data.get('rating_status')
+        self.language: str | None = data.get('language')
+        self.decided_by: str | None = data.get('decided_by')
+        self.is_url_note: bool = bool(data.get('is_url_note'))
+        self.author_alias: str | None = (self.birdwatch_profile or {}).get('alias')
 
     async def update(self) -> None:
         new = await self._client.get_community_note(self.id)
         self.__dict__.update(new.__dict__)
+
+    async def rate(
+        self,
+        helpfulness: Literal['Helpful', 'SomewhatHelpful', 'NotHelpful'],
+        helpful_tags: list[str] | None = None,
+        not_helpful_tags: list[str] | None = None,
+        rating_source: str = 'BirdwatchPostDetail',
+        for_live_note: bool = False
+    ) -> CommunityNoteRating:
+        """
+        Rates this note.
+
+        See Also
+        --------
+        Client.rate_community_note
+        """
+        return await self._client.rate_community_note(
+            self.id, self.tweet_id, helpfulness, helpful_tags, not_helpful_tags,
+            rating_source, for_live_note
+        )
 
     def __repr__(self) -> str:
         return f'<CommunityNote id="{self.id}">'
