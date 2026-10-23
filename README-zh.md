@@ -185,6 +185,7 @@ await client.get_trends('trending')                 # 热门趋势
 - `Client.update_profile()`、`get_about_account()`、`get_user_spotlights()`、`get_user_lists()`、`get_muted_users()`、`get_blocked_users()`。
 - `Client.get_user_mentions()`、`search_tweets_by_date()`、`get_thread()`、`get_tweet_by_url()`、`get_explore_page()`。
 - `Client.highlight_tweet()`、`unhighlight_tweet()`、`is_tweet_highlighted()` 以及 `Tweet.highlighted` / `Tweet.highlight()` / `Tweet.unhighlight()` / `Tweet.is_highlighted()` — 把推文加入或移出个人资料的「精选」标签页，并查询是否已精选（仅限 Premium）。X 不会在时间线中返回这个标志，所以 `Tweet.highlighted` 只对来自 `get_user_highlights_tweets()` 的推文或在调用 `is_highlighted()` 之后才有值。`get_user_highlights_tweets()` 也已更新到当前（2026-10）的 query id 和 features。
+- `Client.pin_tweet()`、`unpin_tweet()` 以及 `Tweet.pin()` / `Tweet.unpin()` — 把推文置顶到个人资料或取消置顶（v1.1 `account/pin_tweet.json` / `unpin_tweet.json`）。个人资料只能有一条置顶，置顶另一条会替换掉原来的；他人的推文会抛出 `NotFound`，取消未置顶的推文会直接成功而不做任何更改。实际限流是 pin / unpin 各 100 次，而不是响应头里的数值，详见 [ratelimits.md](ratelimits.md) 的脚注（移植自 twifork [47c8eff](https://github.com/PawiX25/twifork/commit/47c8eff9a4cffcacdd5a83a9778b3c0ed61090f9)）。
 - `Client.get_original_content_rewards_eligibility()`、`get_creator_subscriptions_eligibility()` — 创作者工作室「原创内容奖励」「订阅」页面的参与条件列表及当前账号的达成情况（`CreatorEligibility` / `CreatorRequirement`：条件文本、是否达成、当前值、进度、备注）。X 以 server-driven UI（`/i/jfapi/`，text/plain 的原始二进制）而非 GraphQL 返回这些页面，因此也包含了解码器（`client.jetfuel.get()` 可获取其他页面）。
 - `Client.get_draft_tweets()`、`create_draft_tweet()`、`delete_draft_tweets()` / `delete_draft_tweet()`、`post_draft_tweet()` 以及 `twikit.DraftTweet` — 列出、保存（正文、媒体、引用 URL、回复对象）、删除和发布「未发送的帖子」中的草稿。X 没有专门的「发布草稿」API；与网页端一样，先发送普通的 CreateTweet，再删除草稿。
 - `twikit.SearchOptions` / `twikit.build_query` — 构建搜索查询。
@@ -215,7 +216,7 @@ await client.get_trends('trending')                 # 热门趋势
 ## 致谢
 
 - **[d60/twikit](https://github.com/d60/twikit)**（[@d60](https://github.com/d60)）— 原始实现，全部功劳归原作者所有。
-- **[PawiX25/twifork](https://github.com/PawiX25/twifork)**（[@PawiX25](https://github.com/PawiX25) 及贡献者们）— 2026 年的修复与 X Spaces 支持，本仓库在其基础上构建。
+- **[PawiX25/twifork](https://github.com/PawiX25/twifork)**（[@PawiX25](https://github.com/PawiX25) 及贡献者们）— 2026 年的修复与 X Spaces 支持，本仓库在其基础上构建（已并入至提交 [47c8eff](https://github.com/PawiX25/twifork/commit/47c8eff9a4cffcacdd5a83a9778b3c0ed61090f9)，2026-10-09）。
 
 两者均基于 **MIT 许可证**发布。
 

@@ -185,6 +185,7 @@ More examples: [examples](examples)
 - `Client.update_profile()`, `get_about_account()`, `get_user_spotlights()`, `get_user_lists()`, `get_muted_users()`, `get_blocked_users()`.
 - `Client.get_user_mentions()`, `search_tweets_by_date()`, `get_thread()`, `get_tweet_by_url()`, `get_explore_page()`.
 - `Client.highlight_tweet()`, `unhighlight_tweet()`, `is_tweet_highlighted()` and `Tweet.highlighted` / `Tweet.highlight()` / `Tweet.unhighlight()` / `Tweet.is_highlighted()` — add a tweet to or remove it from the profile's Highlights tab and check whether it is there (Premium only). X does not ship the flag with timelines, so `Tweet.highlighted` is only set for tweets from `get_user_highlights_tweets()` or after `is_highlighted()` has been awaited. `get_user_highlights_tweets()` was also brought up to the current (2026-10) query id and features.
+- `Client.pin_tweet()`, `unpin_tweet()` and `Tweet.pin()` / `Tweet.unpin()` — pin a tweet to the profile and remove it again (v1.1 `account/pin_tweet.json` / `unpin_tweet.json`). A profile holds one pin, so pinning another tweet replaces it; other people's tweets raise `NotFound`, and unpinning a tweet that is not pinned succeeds without changing anything. The enforced limit is 100 calls each for pin and unpin, not what the headers say — see the footnote in [ratelimits.md](ratelimits.md) (ported from twifork [47c8eff](https://github.com/PawiX25/twifork/commit/47c8eff9a4cffcacdd5a83a9778b3c0ed61090f9)).
 - `Client.get_original_content_rewards_eligibility()`, `get_creator_subscriptions_eligibility()` — the requirement lists of Creator Studio's "Original content rewards" and "Subscriptions" pages and how far the account has got (`CreatorEligibility` / `CreatorRequirement`: text, met or not, current value, progress, notes). X serves these pages as server-driven UI (`/i/jfapi/`, raw binary under text/plain) rather than GraphQL, so the decoder is included too (`client.jetfuel.get()` fetches other pages).
 - `Client.get_draft_tweets()`, `create_draft_tweet()`, `delete_draft_tweets()` / `delete_draft_tweet()`, `post_draft_tweet()` and `twikit.DraftTweet` — list, save (text, media, quoted URL, reply target), delete and post the drafts under "Unsent posts". X has no dedicated "post draft" API; like the web client this sends an ordinary CreateTweet and then deletes the draft.
 - `twikit.SearchOptions` / `twikit.build_query` — search query building.
@@ -215,7 +216,7 @@ If this saved you a headache, consider leaving a ⭐.
 ## Credits
 
 - **[d60/twikit](https://github.com/d60/twikit)** by [@d60](https://github.com/d60) — the original implementation; all upstream credit goes to the original authors.
-- **[PawiX25/twifork](https://github.com/PawiX25/twifork)** by [@PawiX25](https://github.com/PawiX25) and contributors — the 2026 fixes and the X Spaces support this repository builds on.
+- **[PawiX25/twifork](https://github.com/PawiX25/twifork)** by [@PawiX25](https://github.com/PawiX25) and contributors — the 2026 fixes and the X Spaces support this repository builds on (merged up to commit [47c8eff](https://github.com/PawiX25/twifork/commit/47c8eff9a4cffcacdd5a83a9778b3c0ed61090f9), 2026-10-09).
 
 Both are licensed under the **MIT License**.
 

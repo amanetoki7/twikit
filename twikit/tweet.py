@@ -622,6 +622,36 @@ class Tweet:
         self._set_highlighted(highlighted)
         return highlighted
 
+    async def pin(self) -> Response:
+        """
+        Pins the tweet to the logged-in account's profile.
+
+        Returns
+        -------
+        :class:`httpx.Response`
+            Response returned from twitter api.
+
+        See Also
+        --------
+        Client.pin_tweet
+        """
+        return await self._client.pin_tweet(self.id)
+
+    async def unpin(self) -> Response:
+        """
+        Unpins the tweet from the logged-in account's profile.
+
+        Returns
+        -------
+        :class:`httpx.Response`
+            Response returned from twitter api.
+
+        See Also
+        --------
+        Client.unpin_tweet
+        """
+        return await self._client.unpin_tweet(self.id)
+
     async def reply(
         self,
         text: str = '',

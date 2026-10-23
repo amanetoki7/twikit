@@ -10,6 +10,8 @@ Authorization: You've hit the daily limit. Subscribe to Premium for higher limit
 
 このとき 15 分枠のカウンターはまだ約 250 リクエスト残っていると報告するため、レート制限ヘッダーを見張るだけでは事前に気付けません。新規アカウント 4 つで計測したところ、いずれも毎分約 70 投稿のペースで **51 投稿目** で止められました。読み取り・いいね・フォローは引き続き動作し、投稿だけが翌日まで（または Premium に加入するまで）ブロックされます。
 
+† `pin_tweet` と `unpin_tweet` のレート制限ヘッダーは 187 リクエストの共有枠を示しますが、X が実際に適用するのはそれではありません。2 つはそれぞれ別に数えられ、枠内で **100 回** 呼ぶと `429` で止められます（`unpin_tweet` が止まっても `pin_tweet` はまだ通り、ヘッダーは残り 87 と報告したままです）。`NotFound` で失敗した呼び出しも数えられ、`api.x.com` ではなく `x.com/i/api` を経由しても同じ制限に当たります。枠は固定で、最初の呼び出しから始まり、`x-rate-limit-reset` が示す枠の終わりでちょうど解除されます。間隔は関係なく、連続呼び出しでも 8 秒おきでも 101 回目で止められました。9 アカウント・24 枠で計測し、すべて 100 でした。
+
 直近のレスポンスに含まれる残りリクエスト数とリセット時刻は、`Client.rate_limit_remaining` と `Client.rate_limit_reset` で確認できます。
 
 「上限」の `-` は未計測（不明）を表します。
@@ -70,6 +72,7 @@ Authorization: You've hit the daily limit. Subscribe to Premium for higher limit
 | get_notifications[type="All"]         | 180   | notifications/all.json              |
 | get_notifications[type="Mentions"]    | 180   | notifications/mentions.json         |
 | get_notifications[type="Verified"]    | 180   | notifications/verified.json         |
+| pin_tweet                             | 100†  | account/pin_tweet.json              |
 | get_retweeters                        | 500   | Retweeters                          |
 | search_tweet, search_user             | 50    | SearchTimeline                      |
 | send_dm                               | 187   | dm/new2.json                        |
@@ -82,6 +85,7 @@ Authorization: You've hit the daily limit. Subscribe to Premium for higher limit
 | unfavorite_tweet                      | -     | UnfavoriteTweet                     |
 | -                                     | -     | UnmuteList                          |
 | unmute_user                           | 187   | mutes/users/destroy.json            |
+| unpin_tweet                           | 100†  | account/unpin_tweet.json            |
 | edit_list                             | -     | UpdateList                          |
 | upload_media                          | -     | media/upload.json                   |
 | get_user_by_id                        | 500   | UserByRestId                        |
