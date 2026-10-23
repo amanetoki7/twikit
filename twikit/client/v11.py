@@ -48,6 +48,9 @@ class Endpoint:
     NOTIFICATIONS_ALL = f'https://{DOMAIN}/i/api/2/notifications/all.json'
     NOTIFICATIONS_VERIFIED = f'https://{DOMAIN}/i/api/2/notifications/verified.json'
     NOTIFICATIONS_MENTIONS = f'https://{DOMAIN}/i/api/2/notifications/mentions.json'
+    # Posting the notifications tab's cursor-top value here resets the
+    # unread count to 0.
+    NOTIFICATIONS_ALL_LAST_SEEN_CURSOR = f'https://{DOMAIN}/i/api/2/notifications/all/last_seen_cursor.json'
     LIVE_PIPELINE_EVENTS = f'https://api.{DOMAIN}/live_pipeline/events'
     LIVE_PIPELINE_UPDATE_SUBSCRIPTIONS = f'https://api.{DOMAIN}/1.1/live_pipeline/update_subscriptions'
     USER_STATE = f'https://api.{DOMAIN}/help-center/forms/api/prod/user_state.json'

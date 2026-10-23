@@ -58,6 +58,9 @@ class Endpoint:
     COMBINED_LISTS = url('15lgkbq4YMpgnv3Xf8BlXg/CombinedLists')
     PROFILE_SPOTLIGHTS = url('mzoqrVGwk-YTSGME1dRfXQ/ProfileSpotlightsQuery')
     ABOUT_ACCOUNT = url('TzOG2twZEfhr9KmClvVVqA/AboutAccountQuery')
+    # Unread counts (notifications tab, DM, XChat). The web client polls
+    # this every 30 seconds (verified 2026-10).
+    VIEWER_BADGE_COUNTS = url('q4Npr1-FYRWyXsRzPckwEA/ViewerBadgeCounts')
     # Same reasoning as USER_BY_SCREEN_NAME above.
     USER_BY_REST_ID = url('tD8zKvQzwY3kdx5yz6YmOw/UserByRestId')
     TWEET_DETAIL = url('559hs_YZNV4IgA3Z6zIIuw/TweetDetail')
@@ -328,6 +331,17 @@ class GQLClient:
     async def about_account(self, screen_name):
         return await self.gql_get(
             Endpoint.ABOUT_ACCOUNT, {'screenName': screen_name}
+        )
+
+    async def viewer_badge_counts(self):
+        # Response: data.viewer_v2.user_results.result.badge_counts with
+        # ntab_unread_count / dm_unread_count / xchat_unread_count /
+        # total_unread_count. Rate limit is 50 per 15 minutes, so poll no
+        # more often than every 18 seconds.
+        headers = self.base._base_headers
+        headers['X-Twitter-Polling'] = 'true'
+        return await self.gql_get(
+            Endpoint.VIEWER_BADGE_COUNTS, {}, headers=headers
         )
 
     async def user_by_rest_id(self, user_id):
