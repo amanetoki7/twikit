@@ -8,8 +8,25 @@ async def handle_x_migration(session, headers):
     home_page = None
     migration_redirection_regex = re.compile(
         r"""(http(?:s)?://(?:www\.)?(twitter|x){1}\.com(/x)?/migrate([/?])?tok=[a-zA-Z0-9%\-_]+)+""", re.VERBOSE)
-    response = await session.request(method="GET", url="https://x.com", headers=headers)
-    home_page = bs4.BeautifulSoup(response.content, 'lxml')
+
+    async def _load(url):
+        response = await session.request(method="GET", url=url, headers=headers)
+        page = bs4.BeautifulSoup(response.content, 'lxml')
+        return response, page
+
+    # Logged-out https://x.com often omits ondemand.s. Authenticated /home still has it.
+    response, home_page = await _load('https://x.com/home')
+    home_html = str(home_page)
+    if (
+        'ondemand' not in home_html
+        and 'name="twitter-site-verification"' not in home_html.lower().replace("'", '"')
+    ):
+        response, home_page = await _load('https://x.com')
+    elif 'ondemand' not in home_html:
+        response2, home2 = await _load('https://x.com')
+        if 'ondemand' in str(home2):
+            response, home_page = response2, home2
+
     migration_url = home_page.select_one("meta[http-equiv='refresh']")
     migration_redirection_url = re.search(migration_redirection_regex, str(
         migration_url)) or re.search(migration_redirection_regex, str(response.content))

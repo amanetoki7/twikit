@@ -17,7 +17,9 @@ from .utils import float_to_hex, is_odd, base64_encode, handle_x_migration
 
 ON_DEMAND_FILE_REGEX = re.compile(
     r""",(\d+):["']ondemand\.s["']""", flags=(re.VERBOSE | re.MULTILINE))
-ON_DEMAND_HASH_PATTERN = r',{}:"([0-9a-f]+)"'
+# The chunk map may quote the hash with ' as well as ", and the hex may be
+# upper-case; accept both so a layout tweak does not break the handshake.
+ON_DEMAND_HASH_PATTERN = r''',{}:["']([0-9a-fA-F]+)["']'''
 INDICES_REGEX = re.compile(r"\[(\d+)\],\s*16")
 
 

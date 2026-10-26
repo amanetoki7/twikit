@@ -220,8 +220,8 @@ await client.get_trends('trending')                 # トレンド
 ## クレジット
 
 - **[d60/twikit](https://github.com/d60/twikit)**（[@d60](https://github.com/d60)）— 元になる実装。功績はすべて原作者に帰属します。
-- **[PawiX25/twifork](https://github.com/PawiX25/twifork)**（[@PawiX25](https://github.com/PawiX25) とコントリビューターの皆さん）— 2026 年時点の不具合修正と X スペース対応。このリポジトリはその成果を取り込んでいます（取り込み済みの最新コミット: [47c8eff](https://github.com/PawiX25/twifork/commit/47c8eff9a4cffcacdd5a83a9778b3c0ed61090f9)、2026-10-09）。
-- すきくん **[八雲ゆかり](https://x.com/yukari_557fd8) さま** ([@yukari-557fd8](https://github.com/yukari-557fd8)) - 公式APIしか使ったことないわたしを救ってくれた。このリポジトリがうまれるきっかけにもなりました。
+- **[PawiX25/twifork](https://github.com/PawiX25/twifork)**（[@PawiX25](https://github.com/PawiX25) とコントリビューターの皆さん）— 2026 年時点の不具合修正と X スペース対応。このリポジトリはその成果を取り込んでいます（取り込み済みの最新コミット: [47c8eff](https://github.com/PawiX25/twifork/commit/47c8eff9a4cffcacdd5a83a9778b3c0ed61090f9)、2026-10-09、[d60/twikit](https://github.com/d60/twikit) + 97 commits ）。
+- **[八雲ゆかり](https://github.com/yukari-557fd8)** ( X／Twitter: [@yukari-557fd8](https://x.com/yukari_557fd8) ) - わたしの彼氏です。公式APIしか使ったことないわたしを救ってくれた。このリポジトリがうまれるきっかけにもなりました。彼の実装をまず第一に尊重し、動作を保証します。（取り込み済みの最新コミット: [aba1f0e](https://github.com/yukari-557fd8/twikit/commit/aba1f0e55a0425273451ad703c562513d1f43993)、2026-09-29、[d60/twikit](https://github.com/d60/twikit) + 11 commits ）。
 
 GitHubリポジトリは、いずれも **MIT ライセンス**で公開されています。
 

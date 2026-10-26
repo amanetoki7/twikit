@@ -22,14 +22,23 @@ class Trend:
 
     def __init__(self, client: Client, data: dict) -> None:
         self._client = client
+        # Older timelines wrap the trend in a 'trend' object and use camelCase
+        # keys; GenericTimelineById / ExplorePage use snake_case at the top.
+        if 'name' not in data and isinstance(data.get('trend'), dict):
+            data = data['trend']
 
-        metadata: dict = data.get('trend_metadata') or {}
-        self.name: str = data['name']
+        metadata: dict = data.get('trend_metadata') or data.get('trendMetadata') or {}
+        self.name: str = data.get('name', '')
         # TODO: parse to int
-        self.tweets_count: str | None = metadata.get('meta_description')
-        self.domain_context: str = metadata.get('domain_context')
+        self.tweets_count: str | None = metadata.get(
+            'meta_description', metadata.get('metaDescription')
+        )
+        self.domain_context: str = metadata.get(
+            'domain_context', metadata.get('domainContext')
+        )
+        grouped = data.get('grouped_trends', data.get('groupedTrends', []))
         self.grouped_trends: list[str] = [
-            trend['name'] for trend in data.get('grouped_trends', [])
+            trend['name'] for trend in grouped
         ]
 
     def __repr__(self) -> str:
