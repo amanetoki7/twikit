@@ -79,6 +79,7 @@ Authorization: You've hit the daily limit. Subscribe to Premium for higher limit
 | get_notifications[type="Mentions"]    | 180   | notifications/mentions.json         |
 | get_notifications[type="Verified"]    | 180   | notifications/verified.json         |
 | pin_tweet                             | 100†  | account/pin_tweet.json              |
+| translate_tweet                       | 100   | grok/translation.json               |
 | get_retweeters                        | 500   | Retweeters                          |
 | search_tweet, search_user             | 50    | SearchTimeline                      |
 | send_dm                               | 187   | dm/new2.json                        |

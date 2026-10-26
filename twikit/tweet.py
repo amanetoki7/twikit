@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from datetime import datetime
 from typing import TYPE_CHECKING, Literal
@@ -653,6 +654,25 @@ class Tweet:
         """
         return await self._client.unpin_tweet(self.id)
 
+    async def translate(self, dst_lang: str | None = None) -> TweetTranslation:
+        """
+        Translates the tweet with Grok.
+
+        Parameters
+        ----------
+        dst_lang : :class:`str` | None
+            Target language code; the client's language when omitted.
+
+        Returns
+        -------
+        :class:`TweetTranslation`
+
+        See Also
+        --------
+        Client.translate_tweet
+        """
+        return await self._client.translate_tweet(self.id, dst_lang)
+
     async def get_community_notes(self) -> list[CommunityNote]:
         """
         Fetches every community note proposed on this tweet.
@@ -942,6 +962,55 @@ class DraftTweet:
 
     def __ne__(self, __value: object) -> bool:
         return not self == __value
+
+
+class TweetTranslation:
+    """
+    A Grok translation of a post (``api.x.com/2/grok/translation.json``),
+    returned by :meth:`.Client.translate_tweet`.
+
+    Attributes
+    ----------
+    tweet_id : :class:`str`
+    dst_lang : :class:`str`
+        The language code that was asked for.
+    text : :class:`str`
+        The translated text.
+    entities : :class:`dict`
+        Entities X attached to the translation. Only present once X serves
+        the translation from its cache; empty on a freshly generated one.
+    content_type : :class:`str`
+        ``POST`` for a tweet.
+    cached : :class:`bool`
+        True when X answered with the whole text in one piece (it already
+        had this translation), False when it was streamed token by token.
+    """
+
+    def __init__(self, tweet_id: str, dst_lang: str, raw: str) -> None:
+        self._raw = raw
+        self.tweet_id = tweet_id
+        self.dst_lang = dst_lang
+        self.content_type: str | None = None
+        self.entities: dict = {}
+        chunks = []
+        for line in raw.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            result = json.loads(line).get('result') or {}
+            chunks.append(result.get('text') or '')
+            if result.get('content_type'):
+                self.content_type = result['content_type']
+            if result.get('entities'):
+                self.entities = result['entities']
+        self.text: str = ''.join(chunks)
+        self.cached: bool = len(chunks) == 1
+
+    def __repr__(self) -> str:
+        return f'<TweetTranslation tweet_id="{self.tweet_id}" dst_lang="{self.dst_lang}">'
+
+    def __str__(self) -> str:
+        return self.text
 
 
 class TweetTombstone:

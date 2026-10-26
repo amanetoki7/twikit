@@ -48,5 +48,7 @@ from .spaces import (
     Spaces,
 )
 from .trend import Trend
-from .tweet import Article, CommunityNote, DraftTweet, Poll, ScheduledTweet, Tweet
+from .tweet import (
+    Article, CommunityNote, DraftTweet, Poll, ScheduledTweet, Tweet, TweetTranslation
+)
 from .user import User

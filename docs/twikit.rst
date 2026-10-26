@@ -133,6 +133,13 @@ Community
    :undoc-members:
    :member-order: bysource
 
+Translation
+---------------------
+
+Grok's post translation (the "Translate post" button) is
+:meth:`.Client.translate_tweet` / :meth:`.Tweet.translate`; the result is
+:class:`twikit.tweet.TweetTranslation`.
+
 Community Notes
 ---------------------
 

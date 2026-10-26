@@ -55,7 +55,10 @@ from ..notification import Notification
 from ..spaces import Spaces
 from ..streaming import Payload, StreamingSession, _payload_from_data
 from ..trend import Location, PlaceTrend, PlaceTrends, Trend
-from ..tweet import CommunityNote, DraftTweet, Poll, ScheduledTweet, Tweet, tweet_from_data
+from ..tweet import (
+    CommunityNote, DraftTweet, Poll, ScheduledTweet, Tweet, TweetTranslation,
+    tweet_from_data
+)
 from ..ui_metrics import solve_ui_metrics
 from ..user import User
 from ..utils import (
@@ -4407,6 +4410,54 @@ class Client:
         """
         _, response = await self.v11.unpin_tweet(tweet_id)
         return response
+
+    async def translate_tweet(
+        self, tweet_id: str, dst_lang: str | None = None
+    ) -> TweetTranslation:
+        """
+        Translates a tweet with Grok - the request behind the "Translate
+        post" button (``api.x.com/2/grok/translation.json``).
+
+        The first time a (tweet, language) pair is asked for X streams the
+        translation token by token and the call returns once the stream
+        ends (about half a second); afterwards X serves the whole text from
+        its cache, for every account. Whether the tweet reports
+        :attr:`Tweet.is_translatable` or shares the target language is not
+        checked - X translates regardless.
+
+        Parameters
+        ----------
+        tweet_id : :class:`str`
+        dst_lang : :class:`str` | None
+            Target language code (``ja``, ``en``, ``fi`` ...). Defaults to
+            the primary subtag of the client's ``language`` (``en`` for
+            ``en-US``). X does not validate the code: an unknown one still
+            answers 200, in whatever language Grok guesses.
+
+        Returns
+        -------
+        :class:`TweetTranslation`
+            ``text`` holds the translation.
+
+        Raises
+        ------
+        :exc:`ServerError`
+            For a tweet id that does not exist (X answers 500, code 131).
+
+        Examples
+        --------
+        >>> translation = await client.translate_tweet('2114550616811094253', 'ja')
+        >>> translation.text
+        '私は完全にあなたの虜です。'
+
+        See Also
+        --------
+        Tweet.translate
+        """
+        if dst_lang is None:
+            dst_lang = (self.language or 'en').split('-')[0]
+        _, response = await self.v11.grok_translation('POST', tweet_id, dst_lang)
+        return TweetTranslation(tweet_id, dst_lang, response.text)
 
     async def block_user(self, user_id: str) -> User:
         """

@@ -41,6 +41,11 @@ class Endpoint:
     PIN_TWEET = f'https://api.{DOMAIN}/1.1/account/pin_tweet.json'
     UNPIN_TWEET = f'https://api.{DOMAIN}/1.1/account/unpin_tweet.json'
     FRIENDS_IDS = f'https://api.{DOMAIN}/1.1/friends/ids.json'
+    # Grok's post translation (the "Translate post" button). Answers
+    # newline-delimited JSON: one line per generated token the first time a
+    # (post, language) pair is asked for, a single line with the whole text
+    # and `entities` once X has it cached.
+    GROK_TRANSLATION = f'https://api.{DOMAIN}/2/grok/translation.json'
     DM_NEW = f'https://{DOMAIN}/i/api/1.1/dm/new2.json'
     DM_INBOX = f'https://{DOMAIN}/i/api/1.1/dm/inbox_initial_state.json'
     DM_INBOX_TIMELINE = f'https://{DOMAIN}/i/api/1.1/dm/inbox_timeline/{{}}.json'
@@ -147,6 +152,22 @@ class V11Client:
             Endpoint.UNPIN_TWEET,
             data={'id': tweet_id},
             headers=headers
+        )
+
+    async def grok_translation(self, content_type, id, dst_lang):
+        # The web client sends the JSON body as text/plain; X accepts
+        # application/json (the base header) just the same, and no Origin
+        # header is needed. The body is a stream, so the caller takes the
+        # raw text and splits it - `request()` only parses single-object
+        # bodies.
+        return await self.base.post(
+            Endpoint.GROK_TRANSLATION,
+            data=json.dumps({
+                'content_type': content_type,
+                'id': id,
+                'dst_lang': dst_lang
+            }),
+            headers=self.base._base_headers
         )
 
     async def upload_media(self, method, is_long_video: bool, *args, **kwargs):
